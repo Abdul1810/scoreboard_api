@@ -1,0 +1,13 @@
+<component name="ArtifactManager">
+  <artifact type="exploded-war" name="zoho_training:war exploded">
+    <output-path>$PROJECT_DIR$/out/artifacts/zoho_training_war_exploded</output-path>
+    <root id="root">
+      <element id="directory" name="WEB-INF">
+        <element id="directory" name="classes">
+          <element id="module-output" name="zoho_training" />
+        </element>
+      </element>
+      <element id="javaee-facet-resources" facet="zoho_training/web/Web" />
+    </root>
+  </artifact>
+</component>
