@@ -7,23 +7,21 @@
     <script>
         let socket;
         let count = 0;
-        let lines = [];
 
         function initWS() {
             socket = new WebSocket("ws://localhost:8080/file");
+
             socket.onopen = function () {
-                console.log("success");
+                console.log("WebSocket connected");
             };
 
             socket.onmessage = function (event) {
+                document.getElementById("result").children[count].innerText += " = " + event.data;
                 count++;
-                // document.getElementById("result").children[count - 1].innerText += " = " + event.data;
-                document.getElementById("result").innerText += " = " + event.data + "\n";
-                sendNextLine();
             };
 
             socket.onerror = function (error) {
-                console.error("error: " + error);
+                console.error("WebSocket Error: " + error);
             };
 
             socket.onclose = function () {
@@ -51,24 +49,26 @@
             const reader = new FileReader();
             reader.onload = function (e) {
                 console.log("starts");
-                lines = e.target.result.trim().split("\n");
+                const lines = e.target.result.split("\n");
+                let index = 0;
+
+                function sendNextLine() {
+                    if (index < lines.length) {
+                        let line = lines[index];
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(line);
+                            let ele = document.createElement("p");
+                            ele.innerText = line;
+                            document.getElementById("result").appendChild(ele);
+                            document.getElementById("progress").innerText = "Progress: " + (index + 1);
+                            index++;
+                            setTimeout(sendNextLine, 10);
+                        }
+                    }
+                }
                 sendNextLine();
             };
             reader.readAsText(file);
-        }
-
-        function sendNextLine() {
-            if (lines.length > 0) {
-                let line = lines.shift();
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(line);
-                    // let el = document.createElement("p");
-                    // el.innerText = line;
-                    // document.getElementById("result").appendChild(el);
-                    document.getElementById("result").innerText += line;
-                    document.getElementById("progress").innerText = "Progress: " + (count + 1);
-                }
-            }
         }
     </script>
 </head>
