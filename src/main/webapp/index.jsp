@@ -1,7 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <html>
 <head>
-    <title>Zoho Training - Day 4</title>
+    <title>Zoho Training - Day 6</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <script>
@@ -12,20 +12,21 @@
             socket = new WebSocket("ws://localhost:8080/file");
 
             socket.onopen = function () {
-                console.log("WebSocket connected");
+                console.log("connect");
             };
 
             socket.onmessage = function (event) {
                 document.getElementById("result").children[count].innerText += " = " + event.data;
+                document.getElementById("progress").innerText = "progress " + (count + 1);
                 count++;
             };
 
             socket.onerror = function (error) {
-                console.error("WebSocket Error: " + error);
+                console.error("error: " + error);
             };
 
             socket.onclose = function () {
-                console.log("WebSocket Closed");
+                console.log("closes");
             };
         }
 
@@ -49,24 +50,17 @@
             const reader = new FileReader();
             reader.onload = function (e) {
                 console.log("starts");
+                socket.send(e.target.result);
                 const lines = e.target.result.split("\n");
-                let index = 0;
 
-                function sendNextLine() {
-                    if (index < lines.length) {
-                        let line = lines[index];
-                        if (socket && socket.readyState === WebSocket.OPEN) {
-                            socket.send(line);
-                            let ele = document.createElement("p");
-                            ele.innerText = line;
-                            document.getElementById("result").appendChild(ele);
-                            document.getElementById("progress").innerText = "Progress: " + (index + 1);
-                            index++;
-                            setTimeout(sendNextLine, 10);
-                        }
-                    }
+                for (let line of lines) {
+                    // if (socket && socket.readyState === WebSocket.OPEN) {
+                        // socket.send(line);
+                        let ele = document.createElement("p");
+                        ele.innerText = line;
+                        document.getElementById("result").appendChild(ele);
+                    // }
                 }
-                sendNextLine();
             };
             reader.readAsText(file);
         }

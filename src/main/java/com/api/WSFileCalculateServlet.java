@@ -2,7 +2,7 @@ package com.api;
 
 import jakarta.websocket.*;
 import jakarta.websocket.server.ServerEndpoint;
-import java.nio.charset.StandardCharsets;
+
 import com.api.util.Calculator;
 
 @ServerEndpoint("/file")
@@ -17,22 +17,23 @@ public class WSFileCalculateServlet {
     }
 
     @OnMessage
-    public void onMessage(String line, Session session) {
-//        System.out.println("Received line: " + line);
-        if (line == null || line.isEmpty()) {
-            return;
-        }
+    public void onMessage(String message, Session session) {
+        String[] lines = message.split("\n");
         RemoteEndpoint.Basic remote = session.getBasicRemote();
 
-        try {
-//            String message = line + " = " + Calculator.calculate(line) + "\n";
-            remote.sendText(Calculator.calculate(line) + "");
-        } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+        for (String line : lines) {
+            if (line == null || line.isEmpty()) {
+                continue;
+            }
             try {
-                remote.sendText(line + " = Error: " + e.getMessage());
-            } catch (Exception ex) {
-                System.out.println("Error " + ex.getMessage());
+                remote.sendText(Calculator.calculate(line) + "");
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage());
+                try {
+                    remote.sendText(line + " = Error: " + e.getMessage());
+                } catch (Exception ex) {
+                    System.out.println("Error " + ex.getMessage());
+                }
             }
         }
     }
