@@ -3,40 +3,48 @@ package com.api;
 import jakarta.websocket.*;
 import jakarta.websocket.server.ServerEndpoint;
 
-import com.api.util.Calculator;
-
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import com.api.util.Calculator;
 
 @ServerEndpoint("/file")
 public class WSFileCalculateServlet {
-    String[] lines;
+//    private final static Map<String, Double> caches = new HashMap<>();
     boolean[] calculatedOnes;
+    String[] lines;
 
-    @OnOpen
-    public void onOpen(Session session) {
-        session.setMaxIdleTimeout(10 * 60 * 1000);
-        session.setMaxTextMessageBufferSize(1024 * 1024);
-        session.setMaxBinaryMessageBufferSize(1024 * 1024);
-        System.out.println("Open session: " + session.getId());
-    }
+    private final static int MAX_CACHE_SIZE = 300;
+    private final static Map<String, Double> caches = new LinkedHashMap<String, Double>(100, 0.90f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, Double> eldest) {
+            return size() > MAX_CACHE_SIZE;
+        }
+    };
 
     @OnMessage
-    public void onMessage(String message, Session session) {
-        System.out.println("Message: " + message + " from session: " + session.getId());
+    public void onMessage(String message, Session session) throws IOException {
         String[] parts = message.split(" ");
         int from = Integer.parseInt(parts[0]);
         int to = Integer.parseInt(parts[1]);
 
-        for (int i=from; i<to; i++) {
+        for (int i = from; i < to; i++) {
             if (calculatedOnes != null && calculatedOnes[i]) {
                 continue;
             }
-            double result = Calculator.calculate(lines[i]);
-            try {
-                session.getBasicRemote().sendText(i + "," + result);
+            if (caches.containsKey(lines[i])) {
+                System.out.println("cache using");
                 calculatedOnes[i] = true;
-            } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
+                session.getBasicRemote().sendText(i + "," + caches.get(lines[i]));
+            } else {
+                double result = Calculator.calculate(lines[i]);
+                calculatedOnes[i] = true;
+                caches.put(lines[i], result);
+                System.out.println("cache save");
+                session.getBasicRemote().sendText(i + "," + result);
             }
         }
     }
@@ -47,6 +55,14 @@ public class WSFileCalculateServlet {
         lines = fileContent.split("\n");
         calculatedOnes = new boolean[lines.length];
         System.out.println("received " + lines.length);
+    }
+
+    @OnOpen
+    public void onOpen(Session session) {
+        session.setMaxIdleTimeout(10 * 60 * 1000);
+        session.setMaxTextMessageBufferSize(1024 * 1024);
+        session.setMaxBinaryMessageBufferSize(1024 * 1024);
+        System.out.println("Open session: " + session.getId());
     }
 
     @OnClose
