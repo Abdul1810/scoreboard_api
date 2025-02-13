@@ -1,8 +1,18 @@
 package com.api.util;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Stack;
 
 public class Calculator {
+    private final static int MAX_CACHE_SIZE = 300;
+    private final static Map<String, Double> caches = new LinkedHashMap<String, Double>(100, 0.90f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, Double> eldest) {
+            return size() > MAX_CACHE_SIZE;
+        }
+    };
+
     public static double calculate(String expression) {
         return evaluate(expression.replaceAll("\\s+", ""));
     }
@@ -25,12 +35,12 @@ public class Calculator {
                 operators.push(c);
             } else if (c == ')') {
                 while (!operators.isEmpty() && operators.peek() != '(') {
-                    values.push(applyOp(operators.pop(), values.pop(), values.pop()));
+                    values.push(applyCaching(operators.pop(), values.pop(), values.pop()));
                 }
                 operators.pop();
             } else if ("+-*/".indexOf(c) != -1) {
                 while (!operators.isEmpty() && precedence(operators.peek()) >= precedence(c)) {
-                    values.push(applyOp(operators.pop(), values.pop(), values.pop()));
+                    values.push(applyCaching(operators.pop(), values.pop(), values.pop()));
                 }
                 operators.push(c);
             }
@@ -38,7 +48,7 @@ public class Calculator {
         }
 
         while (!operators.isEmpty()) {
-            values.push(applyOp(operators.pop(), values.pop(), values.pop()));
+            values.push(applyCaching(operators.pop(), values.pop(), values.pop()));
         }
 
         return values.pop();
@@ -46,6 +56,22 @@ public class Calculator {
 
     private static int precedence(char op) {
         return (op == '+' || op == '-') ? 1 : (op == '*' || op == '/') ? 2 : 0;
+    }
+
+    private static double applyCaching(char op, double b, double a) {
+        String exp = a + "" + op + b;
+        if (caches.containsKey(exp)) {
+            System.out.println("cache use " + exp);
+            return caches.get(exp);
+        } else {
+            double result = applyOp(op, b, a);
+            caches.put(exp, result);
+            System.out.println("cache updated");
+            System.out.println("Cache lists " + caches.size());
+            caches.forEach((k, v) -> System.out.println(k + " : " + v));
+            System.out.println("==list ends==");
+            return result;
+        }
     }
 
     private static double applyOp(char op, double b, double a) {
@@ -57,8 +83,7 @@ public class Calculator {
             case '*':
                 return a * b;
             case '/':
-                if (b == 0)
-                    throw new ArithmeticException("Division by zero");
+                if (b == 0) throw new ArithmeticException("Division by zero");
                 return a / b;
             default:
                 return 0;

@@ -5,25 +5,20 @@ import jakarta.websocket.server.ServerEndpoint;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
-import com.api.util.Calculator;
+import static com.api.util.Calculator.calculate;
 
 @ServerEndpoint("/file")
 public class WSFileCalculateServlet {
-//    private final static Map<String, Double> caches = new HashMap<>();
     boolean[] calculatedOnes;
     String[] lines;
-
-    private final static int MAX_CACHE_SIZE = 300;
-    private final static Map<String, Double> caches = new LinkedHashMap<String, Double>(100, 0.90f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, Double> eldest) {
-            return size() > MAX_CACHE_SIZE;
-        }
-    };
+//    private final static int MAX_CACHE_SIZE = 300;
+//    private final static Map<String, Double> caches = new LinkedHashMap<String, Double>(100, 0.90f, true) {
+//        @Override
+//        protected boolean removeEldestEntry(Map.Entry<String, Double> eldest) {
+//            return size() > MAX_CACHE_SIZE;
+//        }
+//    };
 
     @OnMessage
     public void onMessage(String message, Session session) throws IOException {
@@ -35,17 +30,17 @@ public class WSFileCalculateServlet {
             if (calculatedOnes != null && calculatedOnes[i]) {
                 continue;
             }
-            if (caches.containsKey(lines[i])) {
-                System.out.println("cache using");
+//            if (caches.containsKey(lines[i])) {
+//                System.out.println("cache using");
+//                calculatedOnes[i] = true;
+//                session.getBasicRemote().sendText(i + "," + caches.get(lines[i]));
+//            } else {
+//                caches.put(lines[i], result);
+//                System.out.println("cache save");
+//            }
+                double result = calculate(lines[i]);
                 calculatedOnes[i] = true;
-                session.getBasicRemote().sendText(i + "," + caches.get(lines[i]));
-            } else {
-                double result = Calculator.calculate(lines[i]);
-                calculatedOnes[i] = true;
-                caches.put(lines[i], result);
-                System.out.println("cache save");
                 session.getBasicRemote().sendText(i + "," + result);
-            }
         }
     }
 
