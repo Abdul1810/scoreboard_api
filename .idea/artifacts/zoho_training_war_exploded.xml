@@ -1,13 +1,18 @@
 <component name="ArtifactManager">
-  <artifact type="exploded-war" name="zoho_training:war exploded">
+  <artifact type="SmartTomcatPro.exploded-war" name="zoho_training:war exploded">
     <output-path>$PROJECT_DIR$/out/artifacts/zoho_training_war_exploded</output-path>
     <root id="root">
       <element id="directory" name="WEB-INF">
+        <element id="directory" name="lib">
+          <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-databind:2.17.2" />
+          <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-annotations:2.17.2" />
+          <element id="library" level="project" name="Maven: com.fasterxml.jackson.core:jackson-core:2.17.2" />
+        </element>
         <element id="directory" name="classes">
           <element id="module-output" name="zoho_training" />
         </element>
       </element>
-      <element id="javaee-facet-resources" facet="zoho_training/web/Web" />
+      <element id="webapp-facet-resources" />
     </root>
   </artifact>
 </component>

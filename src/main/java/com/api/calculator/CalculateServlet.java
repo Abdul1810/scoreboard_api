@@ -1,4 +1,4 @@
-package com.api;
+package com.api.calculator;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

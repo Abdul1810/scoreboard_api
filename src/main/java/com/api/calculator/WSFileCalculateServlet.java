@@ -1,8 +1,7 @@
-package com.api;
+package com.api.calculator;
 
 import jakarta.websocket.*;
 import jakarta.websocket.server.ServerEndpoint;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 

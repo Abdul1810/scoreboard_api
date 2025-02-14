@@ -1,4 +1,4 @@
-package com.api;
+package com.api.calculator;
 
 import jakarta.websocket.OnMessage;
 import jakarta.websocket.OnOpen;
