@@ -3,42 +3,38 @@ package com.api;
 import jakarta.websocket.server.ServerEndpoint;
 import jakarta.websocket.*;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.nio.file.*;
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @ServerEndpoint("/text")
 public class WSText2FileServlet {
-    private final File file = new File("C:\\Users\\ACER\\Downloads\\text.txt");
+    private final Path filePath = Paths.get("C:\\Users\\ACER\\Downloads\\text.txt");
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private FileWriter writer;
     private StringBuilder content;
 
     @OnOpen
     public void onOpen(Session session) {
         System.out.println("Open session: " + session.getId());
         try {
-            writer = new FileWriter(file, true);
-            try (FileReader reader = new FileReader(file)) {
-                content = new StringBuilder();
-                int i;
-                while ((i = reader.read()) != -1) {
-                    content.append((char) i);
-                }
-                System.out.println("reading text content: " + content);
-                Map<String, String> response = new HashMap<>();
-                response.put("type", "content");
-                response.put("message", content.toString());
-                session.getBasicRemote().sendText(objectMapper.writeValueAsString(response));
-            } catch (Exception e) {
-                System.out.println("not working" + e.getMessage());
+            // Read the content of the file at the time of connection
+            List<String> lines = Files.readAllLines(filePath);
+            content = new StringBuilder();
+            for (String line : lines) {
+                content.append(line).append(System.lineSeparator());
             }
-        } catch (Exception e) {
-            System.out.println("error" + e.getMessage());
+            System.out.println("Reading text content: " + content);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("type", "content");
+            response.put("message", content.toString());
+            session.getBasicRemote().sendText(objectMapper.writeValueAsString(response));
+        } catch (IOException e) {
+            System.out.println("Error reading file: " + e.getMessage());
         }
     }
 
@@ -52,48 +48,36 @@ public class WSText2FileServlet {
             String messageContent = (String) map.getOrDefault("content", "");
 
             if (operation.equals("ADD")) {
-                System.out.println("text to add: " + messageContent);
+                System.out.println("Text to add: " + messageContent);
                 content.insert(cursorPos, messageContent);
-                if (cursorPos != (content.length() - 1)) {
-                    writer = new FileWriter(file);
-                    writer.write(content.toString());
-                    writer.flush();
-                } else {
-                    System.out.println(messageContent);
-                    writer.write(messageContent);
-                    writer.flush();
-                }
+
+                Files.write(filePath, content.toString().getBytes(), StandardOpenOption.TRUNCATE_EXISTING);
             } else if (operation.equals("SUB")) {
                 int count = Integer.parseInt(messageContent);
                 content.delete(cursorPos, cursorPos + count);
-                writer = new FileWriter(file);
-                writer.write(content.toString());
-                writer.flush();
+
+                Files.write(filePath, content.toString().getBytes(), StandardOpenOption.TRUNCATE_EXISTING);
             }
+
             Map<String, String> response = new HashMap<>();
             response.put("type", "sync");
-            response.put("message", "sync done");
+            response.put("message", "Sync done");
             session.getBasicRemote().sendText(objectMapper.writeValueAsString(response));
         } catch (Exception e) {
             try {
-                System.out.println("error" + e.getMessage());
+                System.out.println("Error: " + e.getMessage());
                 Map<String, String> response = new HashMap<>();
                 response.put("type", "sync");
                 response.put("message", e.getMessage());
                 session.getBasicRemote().sendText(objectMapper.writeValueAsString(response));
             } catch (Exception ex) {
-                System.out.println("error" + ex.getMessage());
+                System.out.println("Error: " + ex.getMessage());
             }
         }
     }
 
     @OnClose
     public void onClose(Session session) {
-        try {
-            writer.close();
-        } catch (Exception e) {
-            System.out.println("error" + e.getMessage());
-        }
         System.out.println("Close session: " + session.getId());
     }
 }
