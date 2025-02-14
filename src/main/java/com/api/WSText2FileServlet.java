@@ -6,6 +6,7 @@ import jakarta.websocket.*;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.util.HashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,9 +14,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @ServerEndpoint("/text")
 public class WSText2FileServlet {
     private final File file = new File("C:\\Users\\ACER\\Downloads\\text.txt");
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private FileWriter writer;
     private StringBuilder content;
-    private ObjectMapper objectMapper = new ObjectMapper();
 
     @OnOpen
     public void onOpen(Session session) {
@@ -28,8 +29,11 @@ public class WSText2FileServlet {
                 while ((i = reader.read()) != -1) {
                     content.append((char) i);
                 }
-                System.out.println("content: " + content.toString());
-                session.getBasicRemote().sendText("CONTENT," + content.toString());
+                System.out.println("reading text content: " + content);
+                Map<String, String> response = new HashMap<>();
+                response.put("type", "content");
+                response.put("message", content.toString());
+                session.getBasicRemote().sendText(objectMapper.writeValueAsString(response));
             } catch (Exception e) {
                 System.out.println("not working" + e.getMessage());
             }
@@ -42,7 +46,7 @@ public class WSText2FileServlet {
     public void onMessage(String message, Session session) {
         System.out.println("Request: " + message);
         try {
-            Map map = objectMapper.readValue(message, Map.class);
+            HashMap<String, Object> map = objectMapper.readValue(message, HashMap.class);
             String operation = (String) map.getOrDefault("operation", "ADD");
             int cursorPos = Integer.parseInt(map.getOrDefault("position", 0).toString());
             String messageContent = (String) map.getOrDefault("content", "");
@@ -50,7 +54,7 @@ public class WSText2FileServlet {
             if (operation.equals("ADD")) {
                 System.out.println("text to add: " + messageContent);
                 content.insert(cursorPos, messageContent);
-                if (cursorPos != (content.length()-1)) {
+                if (cursorPos != (content.length() - 1)) {
                     writer = new FileWriter(file);
                     writer.write(content.toString());
                     writer.flush();
@@ -59,19 +63,24 @@ public class WSText2FileServlet {
                     writer.write(messageContent);
                     writer.flush();
                 }
-            }
-            else if (operation.equals("SUB")) {
+            } else if (operation.equals("SUB")) {
                 int count = Integer.parseInt(messageContent);
                 content.delete(cursorPos, cursorPos + count);
                 writer = new FileWriter(file);
                 writer.write(content.toString());
                 writer.flush();
             }
-            session.getBasicRemote().sendText("STATUS,sync done");
+            Map<String, String> response = new HashMap<>();
+            response.put("type", "sync");
+            response.put("message", "sync done");
+            session.getBasicRemote().sendText(objectMapper.writeValueAsString(response));
         } catch (Exception e) {
             try {
                 System.out.println("error" + e.getMessage());
-                session.getBasicRemote().sendText("failed error" + e.getMessage());
+                Map<String, String> response = new HashMap<>();
+                response.put("type", "sync");
+                response.put("message", e.getMessage());
+                session.getBasicRemote().sendText(objectMapper.writeValueAsString(response));
             } catch (Exception ex) {
                 System.out.println("error" + ex.getMessage());
             }

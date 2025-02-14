@@ -54,15 +54,15 @@
             }
 
             socket.onmessage = function (event) {
-                const datas = event.data.split(",");
-                const operation = datas.shift();
-                let content = datas.join(",");
-
-                if (operation === "STATUS") {
-                    result.innerText = content;
-                } else if (operation === "CONTENT") {
-                    text.textContent = content;
-                    lastText = content;
+                try {
+                    const datas = JSON.parse(event.data);
+                    if (datas.type === "content") {
+                        text.textContent = datas.message;
+                    } else if (datas.type === "sync") {
+                        result.innerText = datas.message;
+                    }
+                } catch (e) {
+                    console.error("Error parsing message:", e);
                 }
             };
         });
