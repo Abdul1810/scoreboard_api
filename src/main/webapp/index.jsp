@@ -56,8 +56,24 @@
             socket.onmessage = function (event) {
                 try {
                     const datas = JSON.parse(event.data);
-                    if (datas.type === "content") {
-                        text.textContent = datas.message;
+                    if (datas.type === "ADD") {
+                        const start = parseInt(datas.position, 10);
+                        text.value = lastText.substring(0, start) + datas.message + lastText.substring(start);
+                        text.textContent = text.value;
+                        lastText = text.value;
+                        result.innerText = "sync done";
+                    } else if (datas.type === "SUB") {
+                        const start = parseInt(datas.position, 10);
+                        const end = start + parseInt(datas.message, 10);
+                        text.value = lastText.substring(0, start) + lastText.substring(end);
+                        text.textContent = text.value;
+                        lastText = text.value;
+                        result.innerText = "sync done";
+                    } else if (datas.type === "content") {
+                        text.value = datas.message;
+                        text.textContent = datas.message.toString();
+                        lastText = datas.message;
+                        result.innerText = "sync done";
                     } else if (datas.type === "sync") {
                         result.innerText = datas.message;
                     }
