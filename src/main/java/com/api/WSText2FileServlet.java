@@ -55,10 +55,10 @@ public class WSText2FileServlet {
                 Files.write(filePath, content.toString().getBytes(), StandardOpenOption.TRUNCATE_EXISTING);
             }
 
-            Map<String, String> response = new HashMap<>();
-            response.put("type", "sync");
-            response.put("message", "sync done");
-            session.getBasicRemote().sendText(objectMapper.writeValueAsString(response));
+//            Map<String, String> response = new HashMap<>();
+//            response.put("type", "sync");
+//            response.put("message", "sync done");
+//            session.getBasicRemote().sendText(objectMapper.writeValueAsString(response));
         } catch (Exception e) {
             try {
                 System.out.println("Error: " + e.getMessage());
@@ -106,6 +106,14 @@ public class WSText2FileServlet {
             }
         } catch (IOException e) {
             System.out.println("error" + e.getMessage());
+        }
+        Map<String, Object> response = new HashMap<>();
+        response.put("type", "sync");
+        response.put("message", "sync done");
+        try {
+            session.getBasicRemote().sendText(objectMapper.writeValueAsString(response));
+        } catch (IOException e) {
+            System.out.println("Error sending sync to session: " + session.getId());
         }
     }
 
@@ -157,7 +165,7 @@ public class WSText2FileServlet {
 
             System.out.println("old" + content);
             System.out.println("new" + tempContent);
-            if (content.toString().contentEquals(tempContent)) {
+            if (content.toString().trim().contentEquals(tempContent)) {
                 return;
             }
             String lastText = content.toString();
@@ -189,6 +197,8 @@ public class WSText2FileServlet {
             content = tempContent;
 
             List<Session> sendingSessions = new ArrayList<>(sessions.values());
+            System.out.println("total sessions " + sessions.size());
+            System.out.println("sending sessions " + sendingSessions.size());
             while (!sendingSessions.isEmpty()) {
                 List<Session> toRemove = new ArrayList<>();
                 for (Session session : sendingSessions) {
