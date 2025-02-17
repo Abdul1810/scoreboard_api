@@ -16,9 +16,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class WSText2FileServlet {
     private final Path filePath = Paths.get("C:\\Users\\ACER\\Downloads\\text.txt");
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final Map<String, Session> sessions = new ConcurrentHashMap<>();
-    private StringBuilder content;
-    private Thread watchThread;
+    private final static Map<String, Session> sessions = new ConcurrentHashMap<>();
+    private static StringBuilder content;
+    private static Thread watchThread;
 
     @OnOpen
     public void onOpen(Session session) {
@@ -31,7 +31,7 @@ public class WSText2FileServlet {
         sendFileToSession(session);
 
         if (watchThread == null) {
-            System.out.println("Start file watcher");
+            System.out.println("file watcher runs");
             startFileWatcher();
         }
     }
@@ -165,34 +165,34 @@ public class WSText2FileServlet {
 
             System.out.println("old" + content);
             System.out.println("new" + tempContent);
-            if (content.toString().trim().contentEquals(tempContent)) {
+            if (content.toString().contentEquals(tempContent)) {
                 return;
             }
             String lastText = content.toString();
-            String fileContentNow = tempContent.toString();
+            String currentText = tempContent.toString();
 
-            int minLen = Math.min(lastText.length(), fileContentNow.length());
+            int minLen = Math.min(lastText.length(), currentText.length());
             int start = 0;
-            while (start < minLen && lastText.charAt(start) == fileContentNow.charAt(start)) {
+            while (start < minLen && lastText.charAt(start) == currentText.charAt(start)) {
                 start++;
             }
 
             int endOld = lastText.length() - 1;
-            int endNew = fileContentNow.length() - 1;
-            while (endOld >= start && endNew >= start && lastText.charAt(endOld) == fileContentNow.charAt(endNew)) {
+            int endNew = currentText.length() - 1;
+            while (endOld >= start && endNew >= start && lastText.charAt(endOld) == currentText.charAt(endNew)) {
                 endOld--;
                 endNew--;
             }
 
             Map<String, String> response = new HashMap<>();
-            if (lastText.length() > fileContentNow.length()) {
+            if (lastText.length() > currentText.length()) {
                 response.put("type", "SUB");
                 response.put("position", String.valueOf(start));
                 response.put("message", String.valueOf(lastText.substring(start, endOld + 1).length()));
             } else {
                 response.put("type", "ADD");
                 response.put("position", String.valueOf(start));
-                response.put("message", fileContentNow.substring(start, endNew + 1));
+                response.put("message", currentText.substring(start, endNew + 1));
             }
             content = tempContent;
 

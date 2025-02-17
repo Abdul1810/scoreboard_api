@@ -6,20 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <script>
         let socket;
-        // let lastLength = 0;
         let lastText = "";
-
         document.addEventListener("DOMContentLoaded", function () {
             socket = new WebSocket("ws://localhost:8080/text");
             const text = document.getElementById("text");
             const result = document.getElementById("result");
 
             text.focus();
-            text.addEventListener("input", updateText);
+            // text.addEventListener("input", updateText);
+            text.addEventListener("keydown", (event) => {
+                console.log(event.key);
+                    updateText(event);
+            });
 
-            function updateText() {
+            function updateText(event) {
                 if (socket.readyState === WebSocket.OPEN) {
-                    const currentText = text.value;
+                    const currentText = text.innerText + event.key;
                     const minLen = Math.min(lastText.length, currentText.length);
                     let start = 0;
                     while (start < minLen && lastText[start] === currentText[start]) {
@@ -32,7 +34,6 @@
                         endOld--;
                         endNew--;
                     }
-
                     if (lastText.length > currentText.length) {
                         const json = {
                             operation: "SUB",
@@ -89,12 +90,13 @@
 <p>
     Java, Servlet, Websocket, JSP
 </p>
-<div id="writer" style="display: flex; flex-direction: column; align-items: center;">
+<div id="writer">
     <label for="text" id="result">
         enter text
     </label>
-    <hr/>
-    <textarea name="text" rows="25" cols="80" id="text"></textarea>
+    <%--    <textarea name="text" rows="25" cols="80" id="text"></textarea>--%>
+    <div id="text" contenteditable="true"
+         style="width: 80%; height: 200px; border: 1px solid black; padding: 5px;"></div>
 </div>
 </body>
 </html>
