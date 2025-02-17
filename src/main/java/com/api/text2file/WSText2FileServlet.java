@@ -1,4 +1,4 @@
-package com.api;
+package com.api.text2file;
 
 import jakarta.websocket.server.ServerEndpoint;
 import jakarta.websocket.*;
@@ -164,9 +164,9 @@ public class WSText2FileServlet {
             }
 
             System.out.println("old" + content);
-            System.out.println("new" + tempContent);
-            if (content.toString().contentEquals(tempContent)) {
-                return;
+                System.out.println("new" + tempContent);
+                if (content.toString().trim().contentEquals(tempContent.toString().trim())) {
+                    return;
             }
             String lastText = content.toString();
             String currentText = tempContent.toString();
@@ -194,6 +194,8 @@ public class WSText2FileServlet {
                 response.put("position", String.valueOf(start));
                 response.put("message", currentText.substring(start, endNew + 1));
             }
+//            response.put("type", "content");
+//            response.put("message", tempContent.toString());
             content = tempContent;
 
             List<Session> sendingSessions = new ArrayList<>(sessions.values());
