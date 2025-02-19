@@ -57,6 +57,7 @@
 
             socket.onmessage = function (event) {
                 if (event.data instanceof Blob) {
+                    socket.send(`DONE`);
                     chunks.push(event.data);
                     if (oldBlob) {
                         URL.revokeObjectURL(oldBlob);
