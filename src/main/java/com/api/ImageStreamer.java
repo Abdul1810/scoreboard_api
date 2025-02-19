@@ -56,11 +56,12 @@ public class ImageStreamer {
                     double diffSecs = (endTime - startTime) / 1000.0;
                     System.out.println("Chunk " + count + " sent in " + diffSecs + " seconds");
                     chunkSize = (int) (chunkSize / diffSecs);
-                    if (chunkSize < 8 * KILOBYTE) {
-                        chunkSize = 8 * KILOBYTE;
-                    } else if (chunkSize > 10 * MEGABYTE) {
-                        chunkSize = 10 * MEGABYTE;
-                    }
+//                    if (chunkSize < 8 * KILOBYTE) {
+//                        chunkSize = 8 * KILOBYTE;
+//                    } else if (chunkSize > 10 * MEGABYTE) {
+//                        chunkSize = 10 * MEGABYTE;
+//                    }
+//                    chunkSize=4 * KILOBYTE;
                     buffer = new byte[chunkSize];
                     count++;
                 }
