@@ -5,7 +5,8 @@ import jakarta.websocket.server.ServerEndpoint;
 
 import java.io.*;
 import java.nio.ByteBuffer;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 @ServerEndpoint("/imagews")
 public class ImageStreamer {
@@ -16,16 +17,14 @@ public class ImageStreamer {
     private final static int KILOBYTE = 1024;
     private final static int MEGABYTE = 1024 * KILOBYTE;
 
-    private final Semaphore semaphore = new Semaphore(0);
+    private final BlockingQueue<Boolean> queue = new LinkedBlockingQueue<>();
 
     @OnOpen
     public void onOpen(Session session) {
         System.out.println("Open session: " + session.getId());
         session.setMaxIdleTimeout(10 * 60 * 1000);
         session.setMaxBinaryMessageBufferSize(1024 * 1024);
-
         RemoteEndpoint.Basic remote = session.getBasicRemote();
-
         new Thread(() -> {
             File imageFile = new File(imagePathMedium);
             try (InputStream imageStream = new FileInputStream(imageFile)) {
@@ -44,11 +43,7 @@ public class ImageStreamer {
                     } catch (Exception e) {
                         System.out.println("Error sending chunk " + count + ": " + e);
                     }
-                    try {
-                        semaphore.acquire();
-                    } catch (InterruptedException e) {
-                        System.out.println("Error acquiring permit: " + e);
-                    }
+                    queue.take();
                     long endTime = System.currentTimeMillis();
                     double diffSecs = (endTime - startTime) / 1000.0;
                     System.out.println("Chunk " + count + " sent in " + diffSecs + " seconds");
@@ -66,7 +61,7 @@ public class ImageStreamer {
     @OnMessage
     public void onMessage(String message, Session session) {
         System.out.println("Received message: " + message);
-        semaphore.release();
+        queue.add(true);
     }
 
     @OnClose
