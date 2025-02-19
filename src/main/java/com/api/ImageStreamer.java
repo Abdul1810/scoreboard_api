@@ -5,9 +5,7 @@ import jakarta.websocket.server.ServerEndpoint;
 
 import java.io.*;
 import java.nio.ByteBuffer;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 
 @ServerEndpoint("/imagews")
 public class ImageStreamer {
@@ -18,8 +16,7 @@ public class ImageStreamer {
     private final static int KILOBYTE = 1024;
     private final static int MEGABYTE = 1024 * KILOBYTE;
 
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private CompletableFuture<Void> future;
+    private final Semaphore semaphore = new Semaphore(0);
 
     @OnOpen
     public void onOpen(Session session) {
@@ -28,7 +25,8 @@ public class ImageStreamer {
         session.setMaxBinaryMessageBufferSize(1024 * 1024);
 
         RemoteEndpoint.Basic remote = session.getBasicRemote();
-        executor.submit(() -> {
+
+        new Thread(() -> {
             File imageFile = new File(imagePathMedium);
             try (InputStream imageStream = new FileInputStream(imageFile)) {
                 BufferedInputStream bufferedStream = new BufferedInputStream(imageStream);
@@ -46,22 +44,15 @@ public class ImageStreamer {
                     } catch (Exception e) {
                         System.out.println("Error sending chunk " + count + ": " + e);
                     }
-                    future = new CompletableFuture<>();
                     try {
-                        future.get();
-                    } catch (Exception e) {
-                        System.out.println("Error waiting for message: " + e);
+                        semaphore.acquire();
+                    } catch (InterruptedException e) {
+                        System.out.println("Error acquiring permit: " + e);
                     }
                     long endTime = System.currentTimeMillis();
                     double diffSecs = (endTime - startTime) / 1000.0;
                     System.out.println("Chunk " + count + " sent in " + diffSecs + " seconds");
                     chunkSize = (int) (chunkSize / diffSecs);
-//                    if (chunkSize < 8 * KILOBYTE) {
-//                        chunkSize = 8 * KILOBYTE;
-//                    } else if (chunkSize > 10 * MEGABYTE) {
-//                        chunkSize = 10 * MEGABYTE;
-//                    }
-//                    chunkSize=4 * KILOBYTE;
                     buffer = new byte[chunkSize];
                     count++;
                 }
@@ -69,20 +60,17 @@ public class ImageStreamer {
             } catch (Exception e) {
                 System.out.println("Streaming error: " + e);
             }
-        });
+        }).start();
     }
 
     @OnMessage
     public void onMessage(String message, Session session) {
         System.out.println("Received message: " + message);
-        if (future != null) {
-            future.complete(null);
-        }
+        semaphore.release();
     }
 
     @OnClose
     public void onClose(Session session) {
-        executor.shutdown();
         System.out.println("Closed session: " + session.getId());
     }
 }
