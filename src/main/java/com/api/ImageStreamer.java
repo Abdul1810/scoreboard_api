@@ -5,8 +5,7 @@ import jakarta.websocket.server.ServerEndpoint;
 
 import java.io.*;
 import java.nio.ByteBuffer;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @ServerEndpoint("/imagews")
 public class ImageStreamer {
@@ -17,7 +16,7 @@ public class ImageStreamer {
     private final static int KILOBYTE = 1024;
     private final static int MEGABYTE = 1024 * KILOBYTE;
 
-    private final BlockingQueue<Boolean> queue = new LinkedBlockingQueue<>();
+    private final AtomicBoolean readyForNextChunk = new AtomicBoolean(false);
 
     @OnOpen
     public void onOpen(Session session) {
@@ -43,11 +42,15 @@ public class ImageStreamer {
                     } catch (Exception e) {
                         System.out.println("Error sending chunk " + count + ": " + e);
                     }
-                    queue.take();
+                    while (!readyForNextChunk.get()) {}
+                    readyForNextChunk.set(false);
                     long endTime = System.currentTimeMillis();
                     double diffSecs = (endTime - startTime) / 1000.0;
-                    System.out.println("Chunk " + count + " sent in " + diffSecs + " seconds");
+                    System.out.println("Chunk " + count + " sent in " + diffSecs + " seconds" + " size: " + (chunkSize / diffSecs));
                     chunkSize = (int) (chunkSize / diffSecs);
+                    if (chunkSize > 10 * MEGABYTE) {
+                        chunkSize = 10 * MEGABYTE;
+                    }
                     buffer = new byte[chunkSize];
                     count++;
                 }
@@ -61,7 +64,7 @@ public class ImageStreamer {
     @OnMessage
     public void onMessage(String message, Session session) {
         System.out.println("Received message: " + message);
-        queue.add(true);
+        readyForNextChunk.set(true);
     }
 
     @OnClose
