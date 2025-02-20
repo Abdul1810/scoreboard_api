@@ -17,53 +17,61 @@ public class ImageStreamer {
 
     private long startTime;
     private final File imageFile = new File(imagePathMedium);
-    private BufferedInputStream bufferedStream;
 
+    private BufferedInputStream bufferedStream;
     private byte[] buffer;
     private int chunkSize;
     private int bytesRead;
 
     @OnOpen
-    public void onOpen(Session session) throws IOException {
+    public void onOpen(Session session) {
         System.out.println("Open session: " + session.getId());
         session.setMaxIdleTimeout(10 * 60 * 1000);
         session.setMaxBinaryMessageBufferSize(1024 * 1024);
         RemoteEndpoint.Basic remote = session.getBasicRemote();
 
-        InputStream imageStream = new FileInputStream(imageFile);
-        bufferedStream = new BufferedInputStream(imageStream);
-        chunkSize = MEGABYTE/2;
-        buffer = new byte[chunkSize];
-        startTime = System.currentTimeMillis();
+        try {
+            InputStream imageStream = new FileInputStream(imageFile);
+            bufferedStream = new BufferedInputStream(imageStream);
+            chunkSize = MEGABYTE / 2;
+            buffer = new byte[chunkSize];
+            startTime = System.currentTimeMillis();
 
-        if ((bytesRead = bufferedStream.read(buffer)) != -1) {
-            ByteBuffer byteBuffer = ByteBuffer.wrap(buffer, 0, bytesRead);
-            try {
-                remote.sendBinary(byteBuffer);
-            } catch (Exception e) {
-                System.out.println("error" + e.getMessage());
+            if ((bytesRead = bufferedStream.read(buffer)) != -1) {
+                ByteBuffer byteBuffer = ByteBuffer.wrap(buffer, 0, bytesRead);
+                try {
+                    remote.sendBinary(byteBuffer);
+                } catch (Exception e) {
+                    System.out.println("error" + e.getMessage());
+                }
             }
+        } catch (IOException e) {
+            System.out.println("error" + e.getMessage());
         }
     }
 
     @OnMessage
-    public void onMessage(String message, Session session) throws IOException {
+    public void onMessage(String message, Session session) {
         long endTime = System.currentTimeMillis();
         double diffSecs = (endTime - startTime) / 1000.0;
-        System.out.println(" sent in " + diffSecs + " seconds" + " size: " + (chunkSize / diffSecs));
+        System.out.println(diffSecs + " seconds" + " size" + (chunkSize / diffSecs));
         chunkSize = (int) (chunkSize / diffSecs);
         if (chunkSize > 10 * MEGABYTE) {
             chunkSize = 10 * MEGABYTE;
         }
         buffer = new byte[chunkSize];
         startTime = System.currentTimeMillis();
-        if ((bytesRead = bufferedStream.read(buffer)) != -1) {
-            ByteBuffer byteBuffer = ByteBuffer.wrap(buffer, 0, bytesRead);
-            try {
-                session.getBasicRemote().sendBinary(byteBuffer);
-            } catch (Exception e) {
-                System.out.println("error" + e.getMessage());
+        try {
+            if ((bytesRead = bufferedStream.read(buffer)) != -1) {
+                ByteBuffer byteBuffer = ByteBuffer.wrap(buffer, 0, bytesRead);
+                try {
+                    session.getBasicRemote().sendBinary(byteBuffer);
+                } catch (Exception e) {
+                    System.out.println("error" + e.getMessage());
+                }
             }
+        } catch (IOException e) {
+            System.out.println("error" + e.getMessage());
         }
     }
 
