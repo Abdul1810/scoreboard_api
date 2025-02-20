@@ -1,4 +1,4 @@
-package com.api.score;
+package com.api.scoreboard.match;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.*;
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @WebListener
-public class ScoreListener implements ServletContextAttributeListener, ServletContextListener {
+public class MatchListener implements ServletContextAttributeListener, ServletContextListener {
     private static ServletContext context;
     private static final Map<String, Session> sessions = new HashMap<>();
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -29,17 +29,14 @@ public class ScoreListener implements ServletContextAttributeListener, ServletCo
 
     public static void addSession(String sessionId, Session session) {
         sessions.put(sessionId, session);
-
-        Map<String, Integer> scores = (Map<String, Integer>) context.getAttribute("scores");
-        if (scores == null) {
-            scores = new HashMap<>();
-            scores.put("team1", 0);
-            scores.put("team2", 0);
-            context.setAttribute("scores", scores);
+        List<Map<String, String>> matches = (List<Map<String, String>>) context.getAttribute("matches");
+        if (matches == null) {
+            matches = new ArrayList<>();
+            context.setAttribute("matches", matches);
         }
 
         try {
-            session.getBasicRemote().sendText(objectMapper.writeValueAsString(scores));
+            session.getBasicRemote().sendText(objectMapper.writeValueAsString(matches));
         } catch (IOException e) {
             System.out.println("error" + e.getMessage());
         }
@@ -51,15 +48,15 @@ public class ScoreListener implements ServletContextAttributeListener, ServletCo
 
     @Override
     public void attributeReplaced(ServletContextAttributeEvent event) {
-        if ("scores".equals(event.getName())) {
+        if ("matches".equals(event.getName())) {
             System.out.println("Attribute replaced: " + event.getName());
-            System.out.println("New value: " + context.getAttribute("scores"));
-            sendScoreToALlSessions();
+            System.out.println("New value: " + context.getAttribute("matches"));
+            sendMatchesToALlSessions();
         }
     }
 
-    private void sendScoreToALlSessions() {
-        Map<String, Integer> scores = (Map<String, Integer>) context.getAttribute("scores");
+    private void sendMatchesToALlSessions() {
+        List<Map<String, String>> matches = (List<Map<String, String>>) context.getAttribute("matches");
         List<Session> sendingSessions = new ArrayList<>(sessions.values());
         while (!sendingSessions.isEmpty()) {
             List<Session> toRemove = new ArrayList<>();
@@ -70,7 +67,7 @@ public class ScoreListener implements ServletContextAttributeListener, ServletCo
                         toRemove.add(session);
                         continue;
                     }
-                    session.getBasicRemote().sendText(objectMapper.writeValueAsString(scores));
+                    session.getBasicRemote().sendText(objectMapper.writeValueAsString(matches));
                     toRemove.add(session);
                 } catch (Exception e) {
                     System.out.println("Error sending content to session: " + session.getId());
