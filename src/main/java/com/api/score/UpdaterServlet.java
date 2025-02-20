@@ -16,16 +16,6 @@ public class UpdaterServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        Map<String, Integer> scores = objectMapper.readValue(request.getReader(), HashMap.class);
-        ServletContext context = getServletContext();
-        context.setAttribute("scores", scores);
-
-        response.setContentType("application/json");
-        response.getWriter().write("success");
-    }
-
-    @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         ServletContext context = getServletContext();
         Map<String, Integer> scores = (Map<String, Integer>) context.getAttribute("scores");
@@ -38,5 +28,13 @@ public class UpdaterServlet extends HttpServlet {
 
         response.setContentType("application/json");
         response.getWriter().write(objectMapper.writeValueAsString(scores));
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        Map<String, Integer> scores = objectMapper.readValue(request.getReader(), HashMap.class);
+        ServletContext context = getServletContext();
+        context.setAttribute("scores", scores);
+        response.getWriter().write("success");
     }
 }
