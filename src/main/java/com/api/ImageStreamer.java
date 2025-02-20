@@ -5,7 +5,6 @@ import jakarta.websocket.server.ServerEndpoint;
 
 import java.io.*;
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @ServerEndpoint("/imagews")
 public class ImageStreamer {
@@ -16,55 +15,56 @@ public class ImageStreamer {
     private final static int KILOBYTE = 1024;
     private final static int MEGABYTE = 1024 * KILOBYTE;
 
-    private final AtomicBoolean readyForNextChunk = new AtomicBoolean(false);
+    private long startTime;
+    private final File imageFile = new File(imagePathMedium);
+    private BufferedInputStream bufferedStream;
+
+    private byte[] buffer;
+    private int chunkSize;
+    private int bytesRead;
 
     @OnOpen
-    public void onOpen(Session session) {
+    public void onOpen(Session session) throws IOException {
         System.out.println("Open session: " + session.getId());
         session.setMaxIdleTimeout(10 * 60 * 1000);
         session.setMaxBinaryMessageBufferSize(1024 * 1024);
         RemoteEndpoint.Basic remote = session.getBasicRemote();
-        new Thread(() -> {
-            File imageFile = new File(imagePathMedium);
-            try (InputStream imageStream = new FileInputStream(imageFile)) {
-                BufferedInputStream bufferedStream = new BufferedInputStream(imageStream);
-                int chunkSize = MEGABYTE;
 
-                byte[] buffer = new byte[chunkSize];
-                int bytesRead;
-                int count = 0;
+        InputStream imageStream = new FileInputStream(imageFile);
+        bufferedStream = new BufferedInputStream(imageStream);
+        chunkSize = MEGABYTE/2;
+        buffer = new byte[chunkSize];
+        startTime = System.currentTimeMillis();
 
-                while ((bytesRead = bufferedStream.read(buffer)) != -1) {
-                    ByteBuffer byteBuffer = ByteBuffer.wrap(buffer, 0, bytesRead);
-                    long startTime = System.currentTimeMillis();
-                    try {
-                        remote.sendBinary(byteBuffer);
-                    } catch (Exception e) {
-                        System.out.println("Error sending chunk " + count + ": " + e);
-                    }
-                    while (!readyForNextChunk.get()) {}
-                    readyForNextChunk.set(false);
-                    long endTime = System.currentTimeMillis();
-                    double diffSecs = (endTime - startTime) / 1000.0;
-                    System.out.println("Chunk " + count + " sent in " + diffSecs + " seconds" + " size: " + (chunkSize / diffSecs));
-                    chunkSize = (int) (chunkSize / diffSecs);
-                    if (chunkSize > 10 * MEGABYTE) {
-                        chunkSize = 10 * MEGABYTE;
-                    }
-                    buffer = new byte[chunkSize];
-                    count++;
-                }
-                System.out.println("image send  done" + count);
+        if ((bytesRead = bufferedStream.read(buffer)) != -1) {
+            ByteBuffer byteBuffer = ByteBuffer.wrap(buffer, 0, bytesRead);
+            try {
+                remote.sendBinary(byteBuffer);
             } catch (Exception e) {
-                System.out.println("Streaming error: " + e);
+                System.out.println("error" + e.getMessage());
             }
-        }).start();
+        }
     }
 
     @OnMessage
-    public void onMessage(String message, Session session) {
-        System.out.println("Received message: " + message);
-        readyForNextChunk.set(true);
+    public void onMessage(String message, Session session) throws IOException {
+        long endTime = System.currentTimeMillis();
+        double diffSecs = (endTime - startTime) / 1000.0;
+        System.out.println(" sent in " + diffSecs + " seconds" + " size: " + (chunkSize / diffSecs));
+        chunkSize = (int) (chunkSize / diffSecs);
+        if (chunkSize > 10 * MEGABYTE) {
+            chunkSize = 10 * MEGABYTE;
+        }
+        buffer = new byte[chunkSize];
+        startTime = System.currentTimeMillis();
+        if ((bytesRead = bufferedStream.read(buffer)) != -1) {
+            ByteBuffer byteBuffer = ByteBuffer.wrap(buffer, 0, bytesRead);
+            try {
+                session.getBasicRemote().sendBinary(byteBuffer);
+            } catch (Exception e) {
+                System.out.println("error" + e.getMessage());
+            }
+        }
     }
 
     @OnClose
