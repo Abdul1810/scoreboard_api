@@ -1,4 +1,4 @@
-package com.api;
+package com.api.image;
 
 import jakarta.websocket.*;
 import jakarta.websocket.server.ServerEndpoint;
