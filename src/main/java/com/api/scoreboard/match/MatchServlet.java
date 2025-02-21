@@ -69,7 +69,7 @@ public class MatchServlet extends HttpServlet {
         matches.add(match);
         context.setAttribute("matches", matches);
 
-        Map<String,String> matchStats = new HashMap<>();
+        Map<String,Object> matchStats = new HashMap<>();
         /*
         team1 - number - default 0
         team2 - number - default 0
@@ -92,7 +92,6 @@ public class MatchServlet extends HttpServlet {
         matchStats.put("winner", "none");
 
         context.setAttribute("match_" + newMatchId, matchStats);
-
         response.getWriter().write("success");
     }
 

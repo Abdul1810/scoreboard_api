@@ -7,7 +7,7 @@
             const team1 = document.getElementById("team1").value;
             const team2 = document.getElementById("team2").value;
             const result = document.getElementById("result");
-            fetch('/update-score', {
+            fetch('/update-stats', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

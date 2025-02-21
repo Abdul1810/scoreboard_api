@@ -8,8 +8,8 @@ import jakarta.websocket.server.ServerEndpoint;
 import java.util.HashMap;
 import java.util.Map;
 
-@ServerEndpoint("/ws/score")
-public class ScoreSocket {
+@ServerEndpoint("/ws/stats")
+public class StatsSocket {
     Map<String, String> sessionMapWithMatchId = new HashMap<>();
 
     @OnOpen
@@ -28,7 +28,7 @@ public class ScoreSocket {
             }
             return;
         }
-        ScoreListener.addSession(matchId, session);
+        StatsListener.addSession(matchId, session);
         sessionMapWithMatchId.put(session.getId(), matchId);
     }
 
@@ -36,6 +36,6 @@ public class ScoreSocket {
     public void onClose(Session session) {
         System.out.println("Close session" + session.getId());
         String matchId = sessionMapWithMatchId.get(session.getId());
-        ScoreListener.removeSession(matchId, session);
+        StatsListener.removeSession(matchId, session);
     }
 }

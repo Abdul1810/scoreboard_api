@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @WebListener
-public class ScoreListener implements ServletContextAttributeListener, ServletContextListener {
+public class StatsListener implements ServletContextAttributeListener, ServletContextListener {
     private static ServletContext context;
     private static final Map<String, Session> sessions = new HashMap<>();
     private static final Map<String, List<String>> matchSessions = new HashMap<>();
@@ -37,9 +37,9 @@ public class ScoreListener implements ServletContextAttributeListener, ServletCo
         sessions.add(session.getId());
         matchSessions.put(matchId, sessions);
 
-        Map<String, String> matchScores = (Map<String, String>) context.getAttribute("match_" + matchId);
+        Map<String, String> matchStats = (Map<String, String>) context.getAttribute("match_" + matchId);
         try {
-            session.getBasicRemote().sendText(objectMapper.writeValueAsString(matchScores));
+            session.getBasicRemote().sendText(objectMapper.writeValueAsString(matchStats));
         } catch (IOException e) {
             System.out.println("error" + e.getMessage());
         }
@@ -58,7 +58,7 @@ public class ScoreListener implements ServletContextAttributeListener, ServletCo
             System.out.println("Attribute replaced: " + event.getName());
             System.out.println("New value: " + context.getAttribute(event.getName()));
             String matchId = event.getName().split("_")[1];
-            sendScoreToALlSessions(matchId);
+            sendStatsToALlSessions(matchId);
         }
     }
 
@@ -72,9 +72,9 @@ public class ScoreListener implements ServletContextAttributeListener, ServletCo
         }
     }
 
-    private void sendScoreToALlSessions(String matchId) {
-        Map<String, String> matchScores = (Map<String, String>) context.getAttribute("match_" + matchId);
-        System.out.println("Send score to all sessions for match: " + matchId);
+    private void sendStatsToALlSessions(String matchId) {
+        Map<String, String> matchStats = (Map<String, String>) context.getAttribute("match_" + matchId);
+        System.out.println("Send stats to all sessions for match: " + matchId);
         List<String> sendingSessions = new ArrayList<>(matchSessions.get(matchId));
         System.out.println("Sending to sessions: " + sendingSessions);
         System.out.println("sessions: " + sessions);
@@ -88,7 +88,7 @@ public class ScoreListener implements ServletContextAttributeListener, ServletCo
                         toRemove.add(sessionId);
                         continue;
                     }
-                    session.getBasicRemote().sendText(objectMapper.writeValueAsString(matchScores));
+                    session.getBasicRemote().sendText(objectMapper.writeValueAsString(matchStats));
                     toRemove.add(sessionId);
                 } catch (Exception e) {
                     System.out.println("Error sending content to session: " + sessionId);
@@ -104,7 +104,7 @@ public class ScoreListener implements ServletContextAttributeListener, ServletCo
         System.out.println("Sessions: " + sessions);
         for (String sessionId : sessions) {
             try {
-                Session session = ScoreListener.sessions.get(sessionId);
+                Session session = StatsListener.sessions.get(sessionId);
                 session.close();
             } catch (IOException e) {
                 System.out.println("Error closing session: " + sessionId);

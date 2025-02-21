@@ -19,7 +19,7 @@
                     }
                 });
 
-            socket = new WebSocket('ws://localhost:8080/ws/score?id=<%= request.getParameter("id") %>');
+            socket = new WebSocket('ws://localhost:8080/ws/stats?id=<%= request.getParameter("id") %>');
             socket.onmessage = function (event) {
                 const data = JSON.parse(event.data);
                 document.getElementById("team1score").innerText = data.team1;
@@ -35,20 +35,33 @@
                         (current_batting === "team1" ? "Team 1 is batting" : "Team 2 is batting");
                     updateUI();
                 } else {
-                    document.getElementById("match-result").innerText = data.winner + " won the match";
+                    document.getElementById("match-result").textContent = data.winner !== 'tie' ? data.winner + " won the match" : "Tie";
+                    if (data.winner === "team1") {
+                        document.getElementById("team1stats").style.backgroundColor = "lightgreen";
+                        document.getElementById("team2stats").style.backgroundColor = "white";
+                    } else if (data.winner === "team2") {
+                        document.getElementById("team2stats").style.backgroundColor = "lightgreen";
+                        document.getElementById("team1stats").style.backgroundColor = "white";
+                    } else {
+                        document.getElementById("team1stats").style.backgroundColor = "peachpuff";
+                        document.getElementById("team2stats").style.backgroundColor = "peachpuff";
+                    }
                 }
             };
 
             socket.onclose = function () {
-                document.getElementById("result").innerText = 'Match Removed';
+                document.getElementById("result").innerText = "Connection closed. Refreshing...";
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
             };
         });
 
         function updateUI() {
             document.getElementById("team1stats").style.backgroundColor =
-                (current_batting === "team1") ? "lightgreen" : "white";
+                (current_batting === "team1") ? "aliceblue" : "white";
             document.getElementById("team2stats").style.backgroundColor =
-                (current_batting === "team2") ? "lightgreen" : "white";
+                (current_batting === "team2") ? "aliceblue" : "white";
         }
     </script>
 </head>
@@ -56,12 +69,11 @@
 <h2>Scoreboard</h2>
 <p id="result"></p>
 <p id="match-result"></p>
-<div id="team1stats">
+<div id="team1stats" style="border: 1px solid #000; padding: 10px; margin-bottom: 10px;">
     <h3><span id="team1"></span></h3>
     <p>Score: <span id="team1score">0</span> | Wickets: <span id="team1wickets">0</span> | Balls: <span id="team1balls">0</span></p>
 </div>
-<br>
-<div id="team2stats">
+<div id="team2stats" style="border: 1px solid #000; padding: 10px;">
     <h3><span id="team2"></span></h3>
     <p>Score: <span id="team2score">0</span> | Wickets: <span id="team2wickets">0</span> | Balls: <span id="team2balls">0</span></p>
 </div>

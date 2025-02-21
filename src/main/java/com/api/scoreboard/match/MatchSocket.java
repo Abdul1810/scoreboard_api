@@ -1,6 +1,5 @@
 package com.api.scoreboard.match;
 
-import com.api.scoreboard.ScoreListener;
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnOpen;
 import jakarta.websocket.Session;
