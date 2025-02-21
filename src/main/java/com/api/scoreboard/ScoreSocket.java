@@ -25,8 +25,10 @@ public class ScoreSocket {
                 session.close();
             } catch (Exception e) {
                 System.out.println("Error closing session");
-            } return;
-        } ScoreListener.addSession(matchId, session);
+            }
+            return;
+        }
+        ScoreListener.addSession(matchId, session);
         sessionMapWithMatchId.put(session.getId(), matchId);
     }
 

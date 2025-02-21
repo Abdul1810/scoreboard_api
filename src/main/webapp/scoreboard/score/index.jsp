@@ -1,10 +1,12 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <html>
 <head>
-    <title>Loading</title>
+    <title>Loading...</title>
     <script>
         let socket;
-        document.addEventListener('DOMContentLoaded', function() {
+        let current_batting = "team1";
+
+        document.addEventListener('DOMContentLoaded', function () {
             fetch('/api/matches?id=<%= request.getParameter("id") %>')
                 .then(response => response.json())
                 .then(data => {
@@ -16,29 +18,52 @@
                         document.getElementById("team2").innerText = data.team2;
                     }
                 });
+
             socket = new WebSocket('ws://localhost:8080/ws/score?id=<%= request.getParameter("id") %>');
-            socket.onmessage = function(event) {
+            socket.onmessage = function (event) {
                 const data = JSON.parse(event.data);
                 document.getElementById("team1score").innerText = data.team1;
                 document.getElementById("team2score").innerText = data.team2;
+                document.getElementById("team1wickets").innerText = data.team1_wickets;
+                document.getElementById("team2wickets").innerText = data.team2_wickets;
+                document.getElementById("team1balls").innerText = data.team1_balls;
+                document.getElementById("team2balls").innerText = data.team2_balls;
+
+                if (data.is_completed === "false") {
+                    current_batting = data.current_batting;
+                    document.getElementById("match-result").innerText =
+                        (current_batting === "team1" ? "Team 1 is batting" : "Team 2 is batting");
+                    updateUI();
+                } else {
+                    document.getElementById("match-result").innerText = data.winner + " won the match";
+                }
             };
-            socket.onclose = function() {
+
+            socket.onclose = function () {
                 document.getElementById("result").innerText = 'Match Removed';
             };
         });
+
+        function updateUI() {
+            document.getElementById("team1stats").style.backgroundColor =
+                (current_batting === "team1") ? "lightgreen" : "white";
+            document.getElementById("team2stats").style.backgroundColor =
+                (current_batting === "team2") ? "lightgreen" : "white";
+        }
     </script>
 </head>
 <body style="text-align: center; font-family: Arial, sans-serif;">
-<h1>
-    ScoreBoard
-</h1>
-<p id="result">
-</p>
-<h4>
-    <span id="team1"></span> - <span id="team1score">Loading...</span>
-</h4>
-<h4>
-    <span id="team2"></span> - <span id="team2score">Loading...</span>
-</h4>
+<h2>Scoreboard</h2>
+<p id="result"></p>
+<p id="match-result"></p>
+<div id="team1stats">
+    <h3><span id="team1"></span></h3>
+    <p>Score: <span id="team1score">0</span> | Wickets: <span id="team1wickets">0</span> | Balls: <span id="team1balls">0</span></p>
+</div>
+<br>
+<div id="team2stats">
+    <h3><span id="team2"></span></h3>
+    <p>Score: <span id="team2score">0</span> | Wickets: <span id="team2wickets">0</span> | Balls: <span id="team2balls">0</span></p>
+</div>
 </body>
 </html>

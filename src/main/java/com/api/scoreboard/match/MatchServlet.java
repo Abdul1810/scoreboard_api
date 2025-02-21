@@ -59,13 +59,39 @@ public class MatchServlet extends HttpServlet {
             matches = new ArrayList<>();
             context.setAttribute("matches", matches);
         }
+        for (Map<String, String> m : matches) {
+            if (m.get("team1").equals(match.get("team1")) && m.get("team2").equals(match.get("team2"))) {
+                response.setStatus(400);
+                response.getWriter().write("Match already exists");
+                return;
+            }
+        }
         matches.add(match);
         context.setAttribute("matches", matches);
 
-        Map<String,String> matchScores = new HashMap<>();
-        matchScores.put("team1", "0");
-        matchScores.put("team2", "0");
-        context.setAttribute("match_" + newMatchId, matchScores);
+        Map<String,String> matchStats = new HashMap<>();
+        /*
+        team1 - number - default 0
+        team2 - number - default 0
+        team1_wickets - number - default 0 - max 10
+        team2_wickets - number - default 0 - max 10
+        team1_balls - number - default 0 - max 120
+        team2_balls - number - default 0 - max 120
+        current_batting - team1/team2 - default team1
+        is_completed - true/false - default false
+        winner - team1/team2/none/tie - default none
+         */
+        matchStats.put("team1", "0");
+        matchStats.put("team2", "0");
+        matchStats.put("team1_wickets", "0");
+        matchStats.put("team2_wickets", "0");
+        matchStats.put("team1_balls", "0");
+        matchStats.put("team2_balls", "0");
+        matchStats.put("current_batting", "team1");
+        matchStats.put("is_completed", "false");
+        matchStats.put("winner", "none");
+
+        context.setAttribute("match_" + newMatchId, matchStats);
 
         response.getWriter().write("success");
     }
