@@ -1,4 +1,4 @@
-package com.api.commnd;
+package com.api.old.commnd;
 
 import jakarta.websocket.server.ServerEndpoint;
 import jakarta.websocket.*;

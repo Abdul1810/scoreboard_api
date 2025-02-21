@@ -1,32 +1,26 @@
 package com.api.scoreboard;
 
+import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebListener;
 import jakarta.websocket.Session;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @WebListener
-public class StatsListener implements ServletContextAttributeListener, ServletContextListener {
-    private static ServletContext context;
+public class StatsListener {
     private static final Map<String, Session> sessions = new HashMap<>();
     private static final Map<String, List<String>> matchSessions = new HashMap<>();
     private static final ObjectMapper objectMapper = new ObjectMapper();
-
-    @Override
-    public void contextInitialized(ServletContextEvent event) {
-        context = event.getServletContext();
-    }
-
-    @Override
-    public void contextDestroyed(ServletContextEvent event) {
-        context = null;
-    }
 
     public static void addSession(String matchId, Session session) {
         sessions.put(session.getId(), session);
@@ -37,7 +31,7 @@ public class StatsListener implements ServletContextAttributeListener, ServletCo
         sessions.add(session.getId());
         matchSessions.put(matchId, sessions);
 
-        Map<String, String> matchStats = (Map<String, String>) context.getAttribute("match_" + matchId);
+        Map<String, String> matchStats = fetchMatchStatsFromDatabase(matchId);
         try {
             session.getBasicRemote().sendText(objectMapper.writeValueAsString(matchStats));
         } catch (IOException e) {
@@ -52,28 +46,16 @@ public class StatsListener implements ServletContextAttributeListener, ServletCo
         matchSessions.put(matchId, sessions);
     }
 
-    @Override
-    public void attributeReplaced(ServletContextAttributeEvent event) {
-        if (event.getName().startsWith("match")) {
-            System.out.println("Attribute replaced: " + event.getName());
-            System.out.println("New value: " + context.getAttribute(event.getName()));
-            String matchId = event.getName().split("_")[1];
-            sendStatsToALlSessions(matchId);
-        }
+    public static void fireStatsUpdate(String matchId) {
+        sendStatsToALlSessions(matchId);
     }
 
-    @Override
-    public void attributeRemoved(ServletContextAttributeEvent event) {
-        if (event.getName().startsWith("match")) {
-            System.out.println("Attribute removed: " + event.getName());
-            System.out.println("New value: " + context.getAttribute(event.getName()));
-            String matchId = event.getName().split("_")[1];
-            disconnectAllSessions(matchId);
-        }
+    public static void fireStatsRemove(String matchId) {
+        disconnectAllSessions(matchId);
     }
 
-    private void sendStatsToALlSessions(String matchId) {
-        Map<String, String> matchStats = (Map<String, String>) context.getAttribute("match_" + matchId);
+    private static void sendStatsToALlSessions(String matchId) {
+        Map<String, String> matchStats = fetchMatchStatsFromDatabase(matchId);
         System.out.println("Send stats to all sessions for match: " + matchId);
         List<String> sendingSessions = new ArrayList<>(matchSessions.get(matchId));
         System.out.println("Sending to sessions: " + sendingSessions);
@@ -98,17 +80,65 @@ public class StatsListener implements ServletContextAttributeListener, ServletCo
         }
     }
 
-    private void disconnectAllSessions(String matchId) {
+    private static void disconnectAllSessions(String matchId) {
         List<String> sessions = matchSessions.get(matchId);
         System.out.println("Disconnecting all sessions for match: " + matchId);
         System.out.println("Sessions: " + sessions);
         for (String sessionId : sessions) {
             try {
                 Session session = StatsListener.sessions.get(sessionId);
-                session.close();
+                if (session != null && session.isOpen()) {
+                    session.close();
+                }
             } catch (IOException e) {
                 System.out.println("Error closing session: " + sessionId);
             }
         }
+    }
+
+    private static Map<String, String> fetchMatchStatsFromDatabase(String matchId) {
+        Map<String, String> matchStats = new HashMap<>();
+        String query = "SELECT team1, team2, team1_wickets, team2_wickets, " +
+                "team1_balls, team2_balls, current_batting, is_completed, winner " +
+                "FROM match_stats WHERE match_id = ?";
+
+        if (matchId == null || matchId.trim().isEmpty()) {
+            System.err.println("Invalid match ID provided.");
+            return matchStats;
+        }
+
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            conn = Database.getConnection();
+            stmt = conn.prepareStatement(query);
+            stmt.setString(1, matchId);
+            rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                matchStats.put("team1", rs.getString("team1"));
+                matchStats.put("team2", rs.getString("team2"));
+                matchStats.put("team1_wickets", rs.getString("team1_wickets"));
+                matchStats.put("team2_wickets", rs.getString("team2_wickets"));
+                matchStats.put("team1_balls", rs.getString("team1_balls"));
+                matchStats.put("team2_balls", rs.getString("team2_balls"));
+                matchStats.put("current_batting", rs.getString("current_batting"));
+                matchStats.put("is_completed", rs.getString("is_completed"));
+                matchStats.put("winner", rs.getString("winner"));
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching match stats from database: " + e.getMessage());
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (stmt != null) stmt.close();
+            } catch (SQLException e) {
+                System.err.println("Error closing resources: " + e.getMessage());
+            }
+        }
+
+        return matchStats;
     }
 }

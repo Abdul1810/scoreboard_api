@@ -22,12 +22,12 @@
             socket = new WebSocket('ws://localhost:8080/ws/stats?id=<%= request.getParameter("id") %>');
             socket.onmessage = function (event) {
                 const data = JSON.parse(event.data);
-                document.getElementById("team1score").innerText = data.team1;
-                document.getElementById("team2score").innerText = data.team2;
-                document.getElementById("team1wickets").innerText = data.team1_wickets;
-                document.getElementById("team2wickets").innerText = data.team2_wickets;
-                document.getElementById("team1balls").innerText = data.team1_balls;
-                document.getElementById("team2balls").innerText = data.team2_balls;
+                document.getElementById("team1score").innerText = data.team1 || 0;
+                document.getElementById("team2score").innerText = data.team2 || 0;
+                document.getElementById("team1wickets").innerText = data.team1_wickets || 0;
+                document.getElementById("team2wickets").innerText = data.team2_wickets || 0;
+                document.getElementById("team1balls").innerText = data.team1_balls || 0;
+                document.getElementById("team2balls").innerText = data.team2_balls || 0;
 
                 if (data.is_completed === "false") {
                     current_batting = data.current_batting;
@@ -35,6 +35,10 @@
                         (current_batting === "team1" ? "Team 1 is batting" : "Team 2 is batting");
                     updateUI();
                 } else {
+                    if (data.winner === undefined) {
+                        document.getElementById("match-result").textContent = "";
+                        return;
+                    }
                     document.getElementById("match-result").textContent = data.winner !== 'tie' ? data.winner + " won the match" : "Tie";
                     if (data.winner === "team1") {
                         document.getElementById("team1stats").style.backgroundColor = "lightgreen";

@@ -6,7 +6,7 @@
     <display-name>Archetype Created Web Application</display-name>
 <!--    <servlet>-->
 <!--        <servlet-name>AdvanceCalculateServlet</servlet-name>-->
-<!--        <servlet-class>com.api.calculator.AdvanceCalculateServlet</servlet-class>-->
+<!--        <servlet-class>com.api.old.calculator.AdvanceCalculateServlet</servlet-class>-->
 <!--    </servlet>-->
 
 <!--    <servlet-mapping>-->
