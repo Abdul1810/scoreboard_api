@@ -28,28 +28,6 @@ public class ScoreListener implements ServletContextAttributeListener, ServletCo
         context = null;
     }
 
-//    public static void addSession(String sessionId, Session session) {
-//        sessions.put(sessionId, session);
-//
-//        Map<String, Integer> scores = (Map<String, Integer>) context.getAttribute("scores");
-//        if (scores == null) {
-//            scores = new HashMap<>();
-//            scores.put("team1", 0);
-//            scores.put("team2", 0);
-//            context.setAttribute("scores", scores);
-//        }
-//
-//        try {
-//            session.getBasicRemote().sendText(objectMapper.writeValueAsString(scores));
-//        } catch (IOException e) {
-//            System.out.println("error" + e.getMessage());
-//        }
-//    }
-//
-//    public static void removeSession(String sessionId) {
-//        sessions.remove(sessionId);
-//    }
-
     public static void addSession(String matchId, Session session) {
         sessions.put(session.getId(), session);
         List<String> sessions = matchSessions.get(matchId);
@@ -59,17 +37,7 @@ public class ScoreListener implements ServletContextAttributeListener, ServletCo
         sessions.add(session.getId());
         matchSessions.put(matchId, sessions);
 
-        Map<String, Map<String, Integer>> scores = (Map<String, Map<String, Integer>>) context.getAttribute("scores");
-        if (scores == null) {
-            scores = new HashMap<>();
-        }
-        Map<String, Integer> matchScores = scores.get(matchId);
-        if (matchScores == null) {
-            matchScores = new HashMap<>();
-            matchScores.put("team1", 0);
-            matchScores.put("team2", 0);
-            scores.put(matchId, matchScores);
-        }
+        Map<String, String> matchScores = (Map<String, String>) context.getAttribute("match_" + matchId);
         try {
             session.getBasicRemote().sendText(objectMapper.writeValueAsString(matchScores));
         } catch (IOException e) {
@@ -86,36 +54,60 @@ public class ScoreListener implements ServletContextAttributeListener, ServletCo
 
     @Override
     public void attributeReplaced(ServletContextAttributeEvent event) {
-        if ("scores".equals(event.getName())) {
+        if (event.getName().startsWith("match")) {
             System.out.println("Attribute replaced: " + event.getName());
-            System.out.println("New value: " + context.getAttribute("scores"));
-            sendScoreToALlSessions();
+            System.out.println("New value: " + context.getAttribute(event.getName()));
+            String matchId = event.getName().split("_")[1];
+            sendScoreToALlSessions(matchId);
         }
     }
 
-    private void sendScoreToALlSessions() {
-        Map<String, Map<String, Integer>> scores = (Map<String, Map<String, Integer>>) context.getAttribute("scores");
-        for (Map.Entry<String, Map<String, Integer>> entry : scores.entrySet()) {
-            String matchId = entry.getKey();
-            Map<String, Integer> matchScores = entry.getValue();
-            List<String> sendingSessions = matchSessions.get(matchId);
-            while (!sendingSessions.isEmpty()) {
-                List<String> toRemove = new ArrayList<>();
-                for (String sessionId : sendingSessions) {
-                    try {
-                        System.out.println("Send content to session: " + sessionId);
-                        Session session = sessions.get(sessionId);
-                        if (!session.isOpen()) {
-                            toRemove.add(sessionId);
-                            continue;
-                        }
-                        session.getBasicRemote().sendText(objectMapper.writeValueAsString(matchScores));
+    @Override
+    public void attributeRemoved(ServletContextAttributeEvent event) {
+        if (event.getName().startsWith("match")) {
+            System.out.println("Attribute removed: " + event.getName());
+            System.out.println("New value: " + context.getAttribute(event.getName()));
+            String matchId = event.getName().split("_")[1];
+            disconnectAllSessions(matchId);
+        }
+    }
+
+    private void sendScoreToALlSessions(String matchId) {
+        Map<String, String> matchScores = (Map<String, String>) context.getAttribute("match_" + matchId);
+        System.out.println("Send score to all sessions for match: " + matchId);
+        List<String> sendingSessions = new ArrayList<>(matchSessions.get(matchId));
+        System.out.println("Sending to sessions: " + sendingSessions);
+        System.out.println("sessions: " + sessions);
+        while (!sendingSessions.isEmpty()) {
+            List<String> toRemove = new ArrayList<>();
+            for (String sessionId : sendingSessions) {
+                try {
+                    System.out.println("Send content to session: " + sessionId);
+                    Session session = sessions.get(sessionId);
+                    if (!session.isOpen()) {
                         toRemove.add(sessionId);
-                    } catch (Exception e) {
-                        System.out.println("Error sending content to session: " + sessionId);
+                        continue;
                     }
+                    session.getBasicRemote().sendText(objectMapper.writeValueAsString(matchScores));
+                    toRemove.add(sessionId);
+                } catch (Exception e) {
+                    System.out.println("Error sending content to session: " + sessionId);
                 }
-                sendingSessions.removeAll(toRemove);
+            }
+            sendingSessions.removeAll(toRemove);
+        }
+    }
+
+    private void disconnectAllSessions(String matchId) {
+        List<String> sessions = matchSessions.get(matchId);
+        System.out.println("Disconnecting all sessions for match: " + matchId);
+        System.out.println("Sessions: " + sessions);
+        for (String sessionId : sessions) {
+            try {
+                Session session = ScoreListener.sessions.get(sessionId);
+                session.close();
+            } catch (IOException e) {
+                System.out.println("Error closing session: " + sessionId);
             }
         }
     }

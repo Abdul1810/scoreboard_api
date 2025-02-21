@@ -22,21 +22,23 @@ public class MatchServlet extends HttpServlet {
         ServletContext context = getServletContext();
         String matchId = request.getParameter("id");
 
+        List<Map<String, String>> matches = (List<Map<String, String>>) context.getAttribute("matches");
+        if (matches == null) {
+            matches = new ArrayList<>();
+            context.setAttribute("matches", matches);
+        }
         if (matchId != null) {
-            List<Map<String, String>> matches = (List<Map<String, String>>) context.getAttribute("matches");
-            if (matches == null) {
-                matches = new ArrayList<>();
-                context.setAttribute("matches", matches);
-            }
             Map<String, String> match = matches.stream().filter(m -> m.get("id").equals(matchId)).findFirst().orElse(null);
             response.setContentType("application/json");
+            if (match == null) {
+                response.setStatus(404);
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Match not found");
+                response.getWriter().write(objectMapper.writeValueAsString(error));
+                return;
+            }
             response.getWriter().write(objectMapper.writeValueAsString(match));
         } else {
-            List<Map<String, String>> matches = (List<Map<String, String>>) context.getAttribute("matches");
-            if (matches == null) {
-                matches = new ArrayList<>();
-                context.setAttribute("matches", matches);
-            }
             response.setContentType("application/json");
             response.getWriter().write(objectMapper.writeValueAsString(matches));
         }
@@ -60,15 +62,10 @@ public class MatchServlet extends HttpServlet {
         matches.add(match);
         context.setAttribute("matches", matches);
 
-        Map<String, Map<String, String>> scores = (Map<String, Map<String, String>>) context.getAttribute("scores");
-        if (scores == null) {
-            scores = new HashMap<>();
-        }
-        Map<String, String> matchScores = new HashMap<>();
+        Map<String,String> matchScores = new HashMap<>();
         matchScores.put("team1", "0");
         matchScores.put("team2", "0");
-        scores.put(String.valueOf(newMatchId), matchScores);
-        context.setAttribute("scores", scores);
+        context.setAttribute("match_" + newMatchId, matchScores);
 
         response.getWriter().write("success");
     }
@@ -85,13 +82,7 @@ public class MatchServlet extends HttpServlet {
 
         matches.removeIf(match -> match.get("id").equals(matchId));
         context.setAttribute("matches", matches);
-
-        Map<String, Map<String, String>> scores = (Map<String, Map<String, String>>) context.getAttribute("scores");
-        if (scores == null) {
-            scores = new HashMap<>();
-        }
-        scores.remove(matchId);
-        context.setAttribute("scores", scores);
+        context.removeAttribute("match_" + matchId);
 
         response.getWriter().write("success");
     }

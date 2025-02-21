@@ -7,16 +7,25 @@
             fetch('/api/matches?id=<%= request.getParameter("id") %>')
                 .then(response => response.json())
                 .then(data => {
-                    if (!data) {
-                        return;
+                    if (data.error) {
+                        document.getElementById("result").innerText = data.error;
+                    } else {
+                        document.getElementById("team1").innerText = data.team1;
+                        document.getElementById("team2").innerText = data.team2;
                     }
-                    document.getElementById("team1").innerText = data.team1;
-                    document.getElementById("team2").innerText = data.team2;
                 });
         });
         function updateScore() {
             const team1score = document.getElementById("team1score").value;
             const team2score = document.getElementById("team2score").value;
+            if (isNaN(team1score) || isNaN(team2score)) {
+                document.getElementById("result").innerText = 'Please enter valid scores';
+                return;
+            }
+            if (team1score < 0 || team2score < 0) {
+                document.getElementById("result").innerText = 'Please enter valid scores';
+                return;
+            }
             const result = document.getElementById("result");
             fetch('/update-score?id=<%= request.getParameter("id") %>', {
                 method: 'PUT',

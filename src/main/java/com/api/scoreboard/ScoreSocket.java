@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @ServerEndpoint("/ws/score")
-public class ListenerWS {
+public class ScoreSocket {
     Map<String, String> sessionMapWithMatchId = new HashMap<>();
 
     @OnOpen
@@ -20,7 +20,13 @@ public class ListenerWS {
 
         System.out.println("Open session" + session.getId());
         String matchId = session.getRequestParameterMap().get("id").get(0);
-        ScoreListener.addSession(matchId, session);
+        if (matchId == null) {
+            try {
+                session.close();
+            } catch (Exception e) {
+                System.out.println("Error closing session");
+            } return;
+        } ScoreListener.addSession(matchId, session);
         sessionMapWithMatchId.put(session.getId(), matchId);
     }
 

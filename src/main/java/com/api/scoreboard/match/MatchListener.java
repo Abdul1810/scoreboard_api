@@ -14,7 +14,7 @@ import java.util.Map;
 @WebListener
 public class MatchListener implements ServletContextAttributeListener, ServletContextListener {
     private static ServletContext context;
-    private static final Map<String, Session> sessions = new HashMap<>();
+    private static final Map<String, Session> matchSessions = new HashMap<>();
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -28,7 +28,7 @@ public class MatchListener implements ServletContextAttributeListener, ServletCo
     }
 
     public static void addSession(String sessionId, Session session) {
-        sessions.put(sessionId, session);
+        matchSessions.put(sessionId, session);
         List<Map<String, String>> matches = (List<Map<String, String>>) context.getAttribute("matches");
         if (matches == null) {
             matches = new ArrayList<>();
@@ -43,7 +43,7 @@ public class MatchListener implements ServletContextAttributeListener, ServletCo
     }
 
     public static void removeSession(String sessionId) {
-        sessions.remove(sessionId);
+        matchSessions.remove(sessionId);
     }
 
     @Override
@@ -57,7 +57,7 @@ public class MatchListener implements ServletContextAttributeListener, ServletCo
 
     private void sendMatchesToALlSessions() {
         List<Map<String, String>> matches = (List<Map<String, String>>) context.getAttribute("matches");
-        List<Session> sendingSessions = new ArrayList<>(sessions.values());
+        List<Session> sendingSessions = new ArrayList<>(matchSessions.values());
         while (!sendingSessions.isEmpty()) {
             List<Session> toRemove = new ArrayList<>();
             for (Session session : sendingSessions) {
