@@ -51,6 +51,10 @@
                         document.getElementById("team1balls").disabled = true;
                     }
                 } else {
+                    if (data.winner === undefined) {
+                        document.getElementById("match-result").textContent = "";
+                        return;
+                    }
                     document.getElementById("match-result").textContent = data.winner !== 'tie' ? data.winner + " won the match" : "Tie";
                     if (data.winner === "team1") {
                         document.getElementById("team1stats").style.backgroundColor = "lightgreen";
@@ -94,6 +98,7 @@
                 return;
             }
             const result = document.getElementById("result");
+            result.innerHTML = 'Updating...';
             let resultData = {};
             if (current_batting === "team1") {
                 resultData = {

@@ -14,7 +14,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@WebListener
 public class MatchListener {
     private static final Map<String, Session> matchSessions = new HashMap<>();
     private static final ObjectMapper objectMapper = new ObjectMapper();

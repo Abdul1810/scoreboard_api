@@ -224,6 +224,7 @@ public class MatchServlet extends HttpServlet {
             }
 
             fireStatsRemove(matchId);
+            fireMatchesUpdate();
             response.setContentType("application/json");
             response.getWriter().write("success");
         } catch (SQLException e) {
