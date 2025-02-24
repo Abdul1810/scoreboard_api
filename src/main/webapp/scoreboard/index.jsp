@@ -11,7 +11,7 @@
 
         document.addEventListener('DOMContentLoaded', function () {
             socket = new WebSocket('ws://localhost:8080/ws/matches');
-
+            setValueEmpty();
             socket.onopen = function (event) {
                 console.log("WebSocket connection opened.");
                 document.getElementById("result").innerText = "Connected";
@@ -32,9 +32,24 @@
                         id: jsonData.id,
                         data: matchesData
                     }));
+                } else if (jsonData.action === "REQUEST_MATCH") {
+                    const matchId = jsonData.match_id;
+                    const matchToSend = matchesData.filter(m => m.id === matchId);
+                    console.log("Match to send: ", matchToSend);
+                    if (!matchToSend) {
+                        return;
+                    }
+                    socket.send(JSON.stringify({
+                        action: "RESPONSE_MATCH",
+                        id: jsonData.id,
+                        data: matchToSend[0],
+                    }));
                 } else if (jsonData.action === "RECEIVE") {
                     matchesData = jsonData.data;
+                    console.log("Matches received: ", matchesData);
                     updateMatches();
+                } else if (jsonData.action === "MODIFY") {
+                    matchesData = matchesData.map(m => m.id === jsonData.data.id ? jsonData.data : m);
                 }
             };
 
@@ -46,7 +61,6 @@
             socket.onerror = function (event) {
                 console.error("WebSocket error: ", event);
             };
-
         });
 
         function updateMatches() {
@@ -64,7 +78,7 @@
 
                 const editButton = document.createElement("a");
                 editButton.innerText = "Edit";
-                editButton.href = window.location.pathname + "edit.jsp?id=" + match.id;
+                editButton.href = window.location.pathname + "edit?id=" + match.id;
 
                 const deleteButton = document.createElement("button");
                 deleteButton.innerText = "Delete";
@@ -73,7 +87,7 @@
                     updateMatches();
                     socket.send(JSON.stringify({
                         action: "DELETE",
-                        data: match.id,
+                        id: match.id,
                     }));
                 };
 
@@ -88,17 +102,17 @@
             const team1 = document.getElementById("team1").value;
             const team2 = document.getElementById("team2").value;
             const newMatch = {
-                id: matchesData.length + 1,
+                id: `${matchesData.length + 1}`,
                 team1: team1,
                 team2: team2,
-                team1_score: 0,
-                team2_score: 0,
-                team1_wickets: 0,
-                team2_wickets: 0,
-                team1_balls: 0,
-                team2_balls: 0,
+                team1_score: "0",
+                team2_score: "0",
+                team1_wickets: "0",
+                team2_wickets: "0",
+                team1_balls: "0",
+                team2_balls: "0",
                 current_batting: "team1",
-                is_completed: false,
+                is_completed: "false",
                 winner: "none"
             };
             matchesData.push(newMatch);
@@ -107,6 +121,11 @@
                 action: "CREATE",
                 data: newMatch,
             }));
+        }
+
+        function setValueEmpty() {
+            document.getElementById("team1").value = "";
+            document.getElementById("team2").value = "";
         }
     </script>
 </head>
