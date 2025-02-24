@@ -16,18 +16,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.api.scoreboard.StatsListener.fireStatsRemove;
-import static com.api.scoreboard.match.MatchListener.fireMatchesUpdate;
+import com.api.scoreboard.StatsListener;
+import com.api.scoreboard.match.MatchListener;
 
 @WebServlet("/api/matches")
 public class MatchServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static Map<String, String> error = new HashMap<>();
+    private final Map<String, String> jsonResponse = new HashMap<>();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String matchId = request.getParameter("id");
-        Map<String, String> error = new HashMap<>();
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
@@ -50,8 +49,8 @@ public class MatchServlet extends HttpServlet {
                     response.getWriter().write(objectMapper.writeValueAsString(match));
                 } else {
                     response.setStatus(404);
-                    error.put("error", "Match not found");
-                    response.getWriter().write(objectMapper.writeValueAsString(error));
+                    jsonResponse.put("message", "Match not found");
+                    response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 }
             } else {
                 String query = "SELECT * FROM matches";
@@ -71,13 +70,13 @@ public class MatchServlet extends HttpServlet {
                 response.getWriter().write(objectMapper.writeValueAsString(matches));
             }
         } catch (SQLException e) {
-            error.put("error", "Database error: " + e.getMessage());
+            jsonResponse.put("message", "Database error: " + e.getMessage());
             response.setStatus(500);
-            response.getWriter().write(objectMapper.writeValueAsString(error));
+            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } catch (NumberFormatException e) {
-            error.put("error", "Invalid match ID format");
+            jsonResponse.put("message", "Invalid match ID format");
             response.setStatus(400);
-            response.getWriter().write(objectMapper.writeValueAsString(error));
+            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } finally {
             try {
                 if (rs != null) rs.close();
@@ -91,9 +90,7 @@ public class MatchServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        Map<String, String> error = new HashMap<>();
         Map<String, String> match = objectMapper.readValue(request.getReader(), HashMap.class);
-
         Connection conn = null;
         PreparedStatement checkStmt = null;
         PreparedStatement insertStmt = null;
@@ -107,10 +104,9 @@ public class MatchServlet extends HttpServlet {
             String team2 = match.get("team2");
 
             if (team1 == null || team2 == null || team1.trim().isEmpty() || team2.trim().isEmpty()) {
-                error.put("error", "Invalid team names");
+                jsonResponse.put("message", "Invalid team names");
                 response.setStatus(400);
-                response.setContentType("application/json");
-                response.getWriter().write(objectMapper.writeValueAsString(error));
+                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 return;
             }
 
@@ -121,10 +117,9 @@ public class MatchServlet extends HttpServlet {
             rs = checkStmt.executeQuery();
 
             if (rs.next()) {
-                error.put("error", "Match already exists");
+                jsonResponse.put("message", "Match already exists");
                 response.setStatus(400);
-                response.setContentType("application/json");
-                response.getWriter().write(objectMapper.writeValueAsString(error));
+                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 return;
             }
 
@@ -145,14 +140,13 @@ public class MatchServlet extends HttpServlet {
                 insertStatsStmt.executeUpdate();
             }
 
-            fireMatchesUpdate();
-            response.setContentType("application/json");
-            response.getWriter().write("success");
+            MatchListener.fireMatchesUpdate();
+            jsonResponse.put("message", "success");
+            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } catch (SQLException e) {
-            error.put("error", "Database error: " + e.getMessage());
+            jsonResponse.put("message", "Database error: " + e.getMessage());
             response.setStatus(500);
-            response.setContentType("application/json");
-            response.getWriter().write(objectMapper.writeValueAsString(error));
+            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } finally {
             try {
                 if (rs != null) rs.close();
@@ -168,29 +162,25 @@ public class MatchServlet extends HttpServlet {
 
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        Map<String, String> error = new HashMap<>();
         String matchId = request.getParameter("id");
 
         if (matchId == null || matchId.trim().isEmpty()) {
-            error.put("error", "Match ID is required");
+            jsonResponse.put("message", "Match ID is required");
             response.setStatus(400);
-            response.setContentType("application/json");
-            response.getWriter().write(objectMapper.writeValueAsString(error));
+            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
             return;
         }
 
         Connection conn = null;
-        PreparedStatement deleteStatsStmt = null;
         PreparedStatement deleteStmt = null;
 
         try {
             conn = Database.getConnection();
 
             if (conn == null) {
-                error.put("error", "Database connection error");
+                jsonResponse.put("message", "Database connection error");
                 response.setStatus(500);
-                response.setContentType("application/json");
-                response.getWriter().write(objectMapper.writeValueAsString(error));
+                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 return;
             }
 
@@ -198,17 +188,11 @@ public class MatchServlet extends HttpServlet {
             try {
                 matchIdInt = Integer.parseInt(matchId);
             } catch (NumberFormatException e) {
-                error.put("error", "Invalid match ID format");
+                jsonResponse.put("message", "Invalid match ID format");
                 response.setStatus(400);
-                response.setContentType("application/json");
-                response.getWriter().write(objectMapper.writeValueAsString(error));
+                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 return;
             }
-
-            String deleteStatsQuery = "DELETE FROM match_stats WHERE match_id = ?";
-            deleteStatsStmt = conn.prepareStatement(deleteStatsQuery);
-            deleteStatsStmt.setInt(1, matchIdInt);
-            deleteStatsStmt.executeUpdate();
 
             String deleteQuery = "DELETE FROM matches WHERE id = ?";
             deleteStmt = conn.prepareStatement(deleteQuery);
@@ -216,25 +200,22 @@ public class MatchServlet extends HttpServlet {
             int affectedRows = deleteStmt.executeUpdate();
 
             if (affectedRows == 0) {
-                error.put("error", "Match not found");
+                jsonResponse.put("message", "Match not found");
                 response.setStatus(404);
-                response.setContentType("application/json");
-                response.getWriter().write(objectMapper.writeValueAsString(error));
+                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 return;
             }
 
-            fireStatsRemove(matchId);
-            fireMatchesUpdate();
-            response.setContentType("application/json");
-            response.getWriter().write("success");
+            StatsListener.fireStatsRemove(matchId);
+            MatchListener.fireMatchesUpdate();
+            jsonResponse.put("message", "success");
+            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } catch (SQLException e) {
-            error.put("error", "Database error: " + e.getMessage());
+            jsonResponse.put("message", "Database error: " + e.getMessage());
             response.setStatus(500);
-            response.setContentType("application/json");
-            response.getWriter().write(objectMapper.writeValueAsString(error));
+            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } finally {
             try {
-                if (deleteStatsStmt != null) deleteStatsStmt.close();
                 if (deleteStmt != null) deleteStmt.close();
             } catch (SQLException e) {
                 System.err.println("Error closing resources: " + e.getMessage());

@@ -26,6 +26,12 @@
                  */
                 const matches = document.getElementById('matches');
                 matches.innerHTML = '';
+                if (data.length === 0) {
+                    const noMatches = document.createElement('div');
+                    noMatches.innerText = 'No matches found';
+                    matches.appendChild(noMatches);
+                    return;
+                }
                 data.forEach(match => {
                     const matchDiv = document.createElement('div');
                     matchDiv.style.display = 'flex';
@@ -46,9 +52,9 @@
                         fetch('/api/matches?id=' + match.id, {
                             method: 'DELETE'
                         })
-                            .then(response => response.text())
+                            .then(response => response.json())
                             .then(data => {
-                                document.getElementById('result').innerText = data;
+                                document.getElementById('result').innerText = data.message;
                             });
                     };
 
@@ -65,6 +71,7 @@
 <h1>
     Current Matches
 </h1>
+<a href="create.jsp">Create New Match</a>
 <p id="result">
 </p>
 <div id="matches">

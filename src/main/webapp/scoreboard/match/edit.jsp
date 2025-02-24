@@ -1,7 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <html>
 <head>
-    <title>Score Updater</title>
+    <title>Loading...</title>
     <script>
         let socket;
         let current_batting = "team1";
@@ -9,9 +9,11 @@
             fetch('/api/matches?id=<%= request.getParameter("id") %>')
                 .then(response => response.json())
                 .then(data => {
-                    if (data.error) {
-                        document.getElementById("result").innerText = data.error;
+                    if (data.message) {
+                        document.getElementById("result").innerText = data.message;
+                        document.title = data.message;
                     } else {
+                        document.title = data.team1 + ' vs ' + data.team2;
                         document.getElementById("team1").innerText = data.team1;
                         document.getElementById("team2").innerText = data.team2;
                     }
@@ -19,7 +21,6 @@
             socket = new WebSocket('ws://localhost:8080/ws/stats?id=<%= request.getParameter("id") %>');
             socket.onmessage = function (event) {
                 const data = JSON.parse(event.data);
-                console.log(data);
                 document.getElementById("team1score").textContent = data.team1;
                 document.getElementById("team2score").textContent = data.team2;
                 document.getElementById("team1wickets").textContent = data.team1wickets;
@@ -118,11 +119,11 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(resultData)
+                body: JSON.stringify(resultData),
             })
-                .then(response => response.text())
+                .then(response => response.json())
                 .then(data => {
-                    result.innerHTML = data;
+                    result.innerHTML = data.message;
                 });
         }
     </script>

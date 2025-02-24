@@ -42,7 +42,6 @@
         <artifactId>sqlite-jdbc</artifactId>
         <version>3.46.1.2</version>
     </dependency>
-
     </dependencies>
     <build>
         <finalName>zoho_training</finalName>

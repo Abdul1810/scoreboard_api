@@ -26,6 +26,12 @@
                  */
                 const matches = document.getElementById('matches');
                 matches.innerHTML = '';
+                if (data.length === 0) {
+                    const noMatches = document.createElement('div');
+                    noMatches.innerText = 'No matches found';
+                    matches.appendChild(noMatches);
+                    return;
+                }
                 data.forEach(match => {
                     const matchDiv = document.createElement('div');
                     const matchLink = document.createElement('a');

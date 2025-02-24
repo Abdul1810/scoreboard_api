@@ -10,8 +10,9 @@
             fetch('/api/matches?id=<%= request.getParameter("id") %>')
                 .then(response => response.json())
                 .then(data => {
-                    if (data.error) {
-                        document.getElementById("result").innerText = data.error;
+                    if (data.message) {
+                        document.getElementById("result").innerText = data.message;
+                        document.title = data.message;
                     } else {
                         document.title = data.team1 + ' vs ' + data.team2;
                         document.getElementById("team1").innerText = data.team1;

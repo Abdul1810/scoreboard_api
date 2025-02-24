@@ -18,9 +18,9 @@
                     team2: team2
                 })
             })
-                .then(response => response.text())
+                .then(response => response.json())
                 .then(data => {
-                    result.innerHTML = data;
+                    result.innerHTML = data.message;
                 });
         }
     </script>
