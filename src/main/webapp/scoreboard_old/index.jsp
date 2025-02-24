@@ -5,7 +5,7 @@
     <script>
         let socket;
         document.addEventListener('DOMContentLoaded', function () {
-            socket = new WebSocket('ws://localhost:8080/ws/matches');
+            socket = new WebSocket('ws://localhost:8080/old/ws/matches');
             socket.onmessage = function (event) {
                 const data = JSON.parse(event.data);
                 /*
@@ -34,33 +34,10 @@
                 }
                 data.forEach(match => {
                     const matchDiv = document.createElement('div');
-                    matchDiv.style.display = 'flex';
-                    matchDiv.style.alignItems = 'center';
-                    matchDiv.style.justifyContent = 'center';
-                    matchDiv.style.gap = '10px';
-
-                    const matchLink = document.createElement('h5');
+                    const matchLink = document.createElement('a');
+                    matchLink.href = window.location.pathname + 'score?id=' + match.id;
                     matchLink.innerText = match.team1 + ' vs ' + match.team2;
-
-                    const editButton = document.createElement('a');
-                    editButton.innerText = 'Edit';
-                    editButton.href = window.location.pathname + 'edit.jsp?id=' + match.id;
-
-                    const deleteButton = document.createElement('button');
-                    deleteButton.innerText = 'Delete';
-                    deleteButton.onclick = function () {
-                        fetch('/api/matches?id=' + match.id, {
-                            method: 'DELETE'
-                        })
-                            .then(response => response.json())
-                            .then(data => {
-                                document.getElementById('result').innerText = data.message;
-                            });
-                    };
-
                     matchDiv.appendChild(matchLink);
-                    matchDiv.appendChild(editButton);
-                    matchDiv.appendChild(deleteButton);
                     matches.appendChild(matchDiv);
                 });
             };
@@ -71,9 +48,6 @@
 <h1>
     Current Matches
 </h1>
-<a href="create.jsp">Create New Match</a>
-<p id="result">
-</p>
 <div id="matches">
 </div>
 </body>

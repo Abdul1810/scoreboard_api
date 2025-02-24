@@ -8,7 +8,7 @@
             const team2 = document.getElementById("team2").value;
             const result = document.getElementById("result");
             result.innerHTML = "Creating...";
-            fetch('/api/matches', {
+            fetch('/old/api/matches', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

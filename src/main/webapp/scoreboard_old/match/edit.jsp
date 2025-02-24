@@ -6,7 +6,7 @@
         let socket;
         let current_batting = "team1";
         document.addEventListener('DOMContentLoaded', function () {
-            fetch('/api/matches?id=<%= request.getParameter("id") %>')
+            fetch('/old/api/matches?id=<%= request.getParameter("id") %>')
                 .then(response => response.json())
                 .then(data => {
                     if (data.message) {
@@ -18,7 +18,7 @@
                         document.getElementById("team2").innerText = data.team2;
                     }
                 });
-            socket = new WebSocket('ws://localhost:8080/ws/stats?id=<%= request.getParameter("id") %>');
+            socket = new WebSocket('ws://localhost:8080/old/ws/stats?id=<%= request.getParameter("id") %>');
             socket.onmessage = function (event) {
                 const data = JSON.parse(event.data);
                 document.getElementById("team1score").textContent = data.team1;
@@ -114,7 +114,7 @@
                     team2_balls: team2balls,
                 };
             }
-            fetch('/update-stats?id=<%= request.getParameter("id") %>', {
+            fetch('/old/update-stats?id=<%= request.getParameter("id") %>', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'

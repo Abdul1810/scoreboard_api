@@ -1,4 +1,4 @@
-package com.api.scoreboard;
+package com.api.scoreboard_old;
 
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import static com.api.util.Utils.validatePositiveIntegers;
 
-@WebServlet("/update-stats")
+@WebServlet("/old/update-stats")
 public class StatsServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> jsonResponse = new HashMap<>();

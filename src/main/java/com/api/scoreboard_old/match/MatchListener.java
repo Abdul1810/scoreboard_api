@@ -1,8 +1,7 @@
-package com.api.scoreboard.match;
+package com.api.scoreboard_old.match;
 
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.annotation.WebListener;
 import jakarta.websocket.Session;
 
 import java.io.IOException;

@@ -1,11 +1,11 @@
-package com.api.scoreboard.match;
+package com.api.scoreboard_old.match;
 
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnOpen;
 import jakarta.websocket.Session;
 import jakarta.websocket.server.ServerEndpoint;
 
-@ServerEndpoint("/ws/matches")
+@ServerEndpoint("/old/ws/matches")
 public class MatchSocket {
     @OnOpen
     public void onOpen(Session session) {

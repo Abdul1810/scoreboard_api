@@ -1,4 +1,4 @@
-package com.api.scoreboard;
+package com.api.scoreboard_old;
 
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;

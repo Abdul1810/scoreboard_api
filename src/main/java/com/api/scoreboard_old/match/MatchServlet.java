@@ -1,9 +1,8 @@
-package com.api.scoreboard.match;
+package com.api.scoreboard_old.match;
 
-import com.api.scoreboard.StatsListener;
+import com.api.scoreboard_old.StatsListener;
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,10 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.api.scoreboard.StatsListener;
-import com.api.scoreboard.match.MatchListener;
-
-@WebServlet("/api/matches")
+@WebServlet("/old/api/matches")
 public class MatchServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> jsonResponse = new HashMap<>();
@@ -27,7 +23,7 @@ public class MatchServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String matchId = request.getParameter("id");
-        Connection conn = null;
+        Connection conn;
         PreparedStatement stmt = null;
         ResultSet rs = null;
 
