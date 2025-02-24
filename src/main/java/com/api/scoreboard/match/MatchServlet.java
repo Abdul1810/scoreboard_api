@@ -172,6 +172,7 @@ public class MatchServlet extends HttpServlet {
         }
 
         Connection conn = null;
+        PreparedStatement deleteMatchStmt = null;
         PreparedStatement deleteStmt = null;
 
         try {
@@ -193,6 +194,11 @@ public class MatchServlet extends HttpServlet {
                 response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 return;
             }
+
+            String deleteMatchQuery = "DELETE FROM match_stats WHERE match_id = ?";
+            deleteMatchStmt = conn.prepareStatement(deleteMatchQuery);
+            deleteMatchStmt.setInt(1, matchIdInt);
+            deleteMatchStmt.executeUpdate();
 
             String deleteQuery = "DELETE FROM matches WHERE id = ?";
             deleteStmt = conn.prepareStatement(deleteQuery);
@@ -216,6 +222,7 @@ public class MatchServlet extends HttpServlet {
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } finally {
             try {
+                if (deleteMatchStmt != null) deleteMatchStmt.close();
                 if (deleteStmt != null) deleteStmt.close();
             } catch (SQLException e) {
                 System.err.println("Error closing resources: " + e.getMessage());
