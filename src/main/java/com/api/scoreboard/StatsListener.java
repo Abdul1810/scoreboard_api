@@ -1,8 +1,9 @@
-package com.api.scoreboard_old;
+package com.api.scoreboard;
 
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.websocket.Session;
+
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -16,6 +17,8 @@ public class StatsListener {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public static void addSession(String matchId, Session session) {
+        System.out.println("Adding session: " + session.getId());
+        System.out.println("For match: " + matchId);
         sessions.put(session.getId(), session);
         matchSessions.putIfAbsent(matchId, new CopyOnWriteArrayList<>());
         matchSessions.get(matchId).add(session.getId());
@@ -38,6 +41,10 @@ public class StatsListener {
     }
 
     public static void fireStatsRemove(String matchId) {
+        System.out.println("Match completed: " + matchId);
+        System.out.println(sessions);
+        System.out.println(matchSessions);
+        if (matchSessions.get(matchId) != null) matchSessions.get(matchId).forEach(System.out::println);
         disconnectAllSessions(matchId);
     }
 
@@ -82,22 +89,24 @@ public class StatsListener {
 
     private static Map<String, String> fetchMatchStatsFromDatabase(String matchId) {
         Map<String, String> matchStats = new HashMap<>();
-        String query = "SELECT team1, team2, team1_wickets, team2_wickets, " +
-                "team1_balls, team2_balls, current_batting, is_completed, winner " +
-                "FROM match_stats WHERE match_id = ?";
+        String query = "SELECT team1_score, team2_score, team1_wickets, team2_wickets, " + "team1_balls, team2_balls, current_batting, is_completed, winner " + "FROM match_stats WHERE match_id = ?";
 
         if (matchId == null || matchId.trim().isEmpty()) {
             System.err.println("Invalid match ID provided.");
             return matchStats;
         }
 
-        try (Connection conn = Database.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+
+        try {
+            conn = Database.getConnection();
+            stmt = conn.prepareStatement(query);
             stmt.setString(1, matchId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    matchStats.put("team1", rs.getString("team1"));
-                    matchStats.put("team2", rs.getString("team2"));
+                    matchStats.put("team1_score", rs.getString("team1_score"));
+                    matchStats.put("team2_score", rs.getString("team2_score"));
                     matchStats.put("team1_wickets", rs.getString("team1_wickets"));
                     matchStats.put("team2_wickets", rs.getString("team2_wickets"));
                     matchStats.put("team1_balls", rs.getString("team1_balls"));
@@ -109,6 +118,17 @@ public class StatsListener {
             }
         } catch (Exception e) {
             System.err.println("Error fetching match stats from database: " + e.getMessage());
+        } finally {
+            try {
+                if (stmt != null) {
+                    stmt.close();
+                }
+                if (conn != null) {
+                    conn.close();
+                }
+            } catch (Exception e) {
+                System.err.println("Error closing resources: " + e.getMessage());
+            }
         }
         return matchStats;
     }

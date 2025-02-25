@@ -1,4 +1,4 @@
-package com.api.scoreboard_old.match;
+package com.api.scoreboard.match;
 
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,22 +60,43 @@ public class MatchListener {
 
     private static List<Map<String, String>> fetchMatchesFromDatabase() {
         List<Map<String, String>> matches = new ArrayList<>();
-        String query = "SELECT id, team1, team2 FROM matches";
+        String query = "SELECT * FROM matches";
         Connection conn = null;
         PreparedStatement stmt = null;
+        PreparedStatement stmt1 = null;
+        PreparedStatement stmt2 = null;
         ResultSet rs = null;
+        ResultSet rs1 = null;
+        ResultSet rs2 = null;
 
         try {
             conn = Database.getConnection();
-
             stmt = conn.prepareStatement(query);
             rs = stmt.executeQuery();
-
             while (rs.next()) {
                 Map<String, String> match = new HashMap<>();
-                match.put("id", rs.getString("id"));
-                match.put("team1", rs.getString("team1"));
-                match.put("team2", rs.getString("team2"));
+                match.put("id", String.valueOf(rs.getInt("id")));
+
+                conn = Database.getConnection();
+                query = "SELECT * FROM teams WHERE id = ?";
+                stmt1 = conn.prepareStatement(query);
+                stmt1.setInt(1, rs.getInt("team1_id"));
+                rs1 = stmt1.executeQuery();
+
+                if (rs1.next()) {
+                    match.put("team1", rs1.getString("name"));
+                }
+
+                conn = Database.getConnection();
+
+                stmt2 = conn.prepareStatement(query);
+                stmt2.setInt(1, rs.getInt("team2_id"));
+                rs2 = stmt2.executeQuery();
+
+                if (rs2.next()) {
+                    match.put("team2", rs2.getString("name"));
+                }
+
                 matches.add(match);
             }
         } catch (Exception e) {
@@ -87,6 +108,21 @@ public class MatchListener {
                 }
                 if (stmt != null) {
                     stmt.close();
+                }
+                if (rs1 != null) {
+                    rs1.close();
+                }
+                if (stmt1 != null) {
+                    stmt1.close();
+                }
+                if (rs2 != null) {
+                    rs2.close();
+                }
+                if (stmt2 != null) {
+                    stmt2.close();
+                }
+                if (conn != null) {
+                    conn.close();
                 }
             } catch (Exception e) {
                 System.err.println("Error closing resources: " + e.getMessage());

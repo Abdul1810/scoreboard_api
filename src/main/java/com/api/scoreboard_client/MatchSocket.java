@@ -1,4 +1,4 @@
-package com.api.scoreboard;
+package com.api.scoreboard_client;
 
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnMessage;
@@ -16,7 +16,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import static com.api.util.Utils.validatePositiveIntegers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-@ServerEndpoint("/ws/matches")
+@ServerEndpoint("/client/ws/matches")
 public class MatchSocket {
     private static final Map<String, Session> sessions = new HashMap<>();
     private static final Map<String, CopyOnWriteArrayList<String>> matchesSessionMap = new HashMap<>();

@@ -6,7 +6,7 @@
         let socket;
         let current_batting = "team1";
         document.addEventListener('DOMContentLoaded', function () {
-            fetch('/old/api/matches?id=<%= request.getParameter("id") %>')
+            fetch('/api/matches?id=<%= request.getParameter("id") %>')
                 .then(response => response.json())
                 .then(data => {
                     if (data.message) {
@@ -18,15 +18,16 @@
                         document.getElementById("team2").innerText = data.team2;
                     }
                 });
-            socket = new WebSocket('ws://localhost:8080/old/ws/stats?id=<%= request.getParameter("id") %>');
+            socket = new WebSocket('ws://localhost:8080/ws/stats?id=<%= request.getParameter("id") %>');
             socket.onmessage = function (event) {
                 const data = JSON.parse(event.data);
-                document.getElementById("team1score").textContent = data.team1;
-                document.getElementById("team2score").textContent = data.team2;
-                document.getElementById("team1wickets").textContent = data.team1wickets;
-                document.getElementById("team2wickets").textContent = data.team2wickets;
-                document.getElementById("team1balls").textContent = data.team1balls;
-                document.getElementById("team2balls").textContent = data.team2balls;
+                console.log(data);
+                document.getElementById("team1score").value = data.team1_score;
+                document.getElementById("team2score").value = data.team2_score;
+                document.getElementById("team1wickets").value = data.team1_wickets;
+                document.getElementById("team2wickets").value = data.team2_wickets;
+                document.getElementById("team1balls").value = data.team1_balls;
+                document.getElementById("team2balls").value = data.team2_balls;
                 if (data.is_completed === "false") {
                     if (data.current_batting === "team1") {
                         current_batting = "team1";
@@ -103,18 +104,18 @@
             let resultData = {};
             if (current_batting === "team1") {
                 resultData = {
-                    team1: team1score,
+                    team1_score: team1score,
                     team1_wickets: team1wickets,
                     team1_balls: team1balls,
                 };
             } else if (current_batting === "team2") {
                 resultData = {
-                    team2: team2score,
+                    team2_score: team2score,
                     team2_wickets: team2wickets,
                     team2_balls: team2balls,
                 };
             }
-            fetch('/old/update-stats?id=<%= request.getParameter("id") %>', {
+            fetch('/update-stats?id=<%= request.getParameter("id") %>', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'

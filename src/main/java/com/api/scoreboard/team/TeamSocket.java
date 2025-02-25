@@ -1,12 +1,13 @@
-package com.api.scoreboard_old.match;
+package com.api.scoreboard.team;
 
+import com.api.scoreboard.team.TeamListener;
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnOpen;
 import jakarta.websocket.Session;
 import jakarta.websocket.server.ServerEndpoint;
 
-@ServerEndpoint("/old/ws/matches")
-public class MatchSocket {
+@ServerEndpoint("/ws/teams")
+public class TeamSocket {
     @OnOpen
     public void onOpen(Session session) {
         session.setMaxIdleTimeout(60 * 60 * 1000);
@@ -14,12 +15,12 @@ public class MatchSocket {
         session.setMaxBinaryMessageBufferSize(10 * 1024 * 1024);
 
         System.out.println("Open session" + session.getId());
-        MatchListener.addSession(session.getId(), session);
+        TeamListener.addSession(session.getId(), session);
     }
 
     @OnClose
     public void onClose(Session session) {
         System.out.println("Close session" + session.getId());
-        MatchListener.removeSession(session.getId());
+        TeamListener.removeSession(session.getId());
     }
 }

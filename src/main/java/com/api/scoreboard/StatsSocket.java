@@ -1,4 +1,4 @@
-package com.api.scoreboard_old;
+package com.api.scoreboard;
 
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnOpen;
@@ -8,7 +8,7 @@ import jakarta.websocket.server.ServerEndpoint;
 import java.util.HashMap;
 import java.util.Map;
 
-@ServerEndpoint("/old/ws/stats")
+@ServerEndpoint("/ws/stats")
 public class StatsSocket {
     Map<String, String> sessionMapWithMatchId = new HashMap<>();
 

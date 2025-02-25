@@ -7,7 +7,7 @@
         let current_batting = "team1";
 
         document.addEventListener('DOMContentLoaded', function () {
-            fetch('/old/api/matches?id=<%= request.getParameter("id") %>')
+            fetch('/api/matches?id=<%= request.getParameter("id") %>')
                 .then(response => response.json())
                 .then(data => {
                     if (data.message) {
@@ -20,11 +20,12 @@
                     }
                 });
 
-            socket = new WebSocket('ws://localhost:8080/old/ws/stats?id=<%= request.getParameter("id") %>');
+            socket = new WebSocket('ws://localhost:8080/ws/stats?id=<%= request.getParameter("id") %>');
             socket.onmessage = function (event) {
                 const data = JSON.parse(event.data);
-                document.getElementById("team1score").innerText = data.team1 || 0;
-                document.getElementById("team2score").innerText = data.team2 || 0;
+                console.log(data);
+                document.getElementById("team1score").innerText = data.team1_score || 0;
+                document.getElementById("team2score").innerText = data.team2_score || 0;
                 document.getElementById("team1wickets").innerText = data.team1_wickets || 0;
                 document.getElementById("team2wickets").innerText = data.team2_wickets || 0;
                 document.getElementById("team1balls").innerText = data.team1_balls || 0;
@@ -76,11 +77,13 @@
 <p id="match-result"></p>
 <div id="team1stats" style="border: 1px solid #000; padding: 10px; margin-bottom: 10px;">
     <h3><span id="team1"></span></h3>
-    <p>Score: <span id="team1score">0</span> | Wickets: <span id="team1wickets">0</span> | Balls: <span id="team1balls">0</span></p>
+    <p>Score: <span id="team1score">0</span> | Wickets: <span id="team1wickets">0</span> | Balls: <span id="team1balls">0</span>
+    </p>
 </div>
 <div id="team2stats" style="border: 1px solid #000; padding: 10px;">
     <h3><span id="team2"></span></h3>
-    <p>Score: <span id="team2score">0</span> | Wickets: <span id="team2wickets">0</span> | Balls: <span id="team2balls">0</span></p>
+    <p>Score: <span id="team2score">0</span> | Wickets: <span id="team2wickets">0</span> | Balls: <span id="team2balls">0</span>
+    </p>
 </div>
 </body>
 </html>

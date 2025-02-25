@@ -1,6 +1,6 @@
-package com.api.scoreboard_old.match;
+package com.api.scoreboard.match;
 
-import com.api.scoreboard_old.StatsListener;
+import com.api.scoreboard.StatsListener;
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.annotation.WebServlet;
@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@WebServlet("/old/api/matches")
+@WebServlet("/api/matches")
 public class MatchServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> jsonResponse = new HashMap<>();
@@ -23,7 +23,7 @@ public class MatchServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String matchId = request.getParameter("id");
-        Connection conn;
+        Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
 
@@ -36,12 +36,32 @@ public class MatchServlet extends HttpServlet {
                 rs = stmt.executeQuery();
 
                 if (rs.next()) {
-                    Map<String, String> match = new HashMap<>();
-                    match.put("id", String.valueOf(rs.getInt("id")));
-                    match.put("team1", rs.getString("team1"));
-                    match.put("team2", rs.getString("team2"));
+                    Map<String, Integer> matchIds = new HashMap<>();
+                    matchIds.put("id", rs.getInt("id"));
+                    matchIds.put("team1_id", rs.getInt("team1_id"));
+                    matchIds.put("team2_id", rs.getInt("team2_id"));
 
-                    response.setContentType("application/json");
+                    Map<String, String> match = new HashMap<>();
+                    match.put("id", String.valueOf(matchIds.get("id")));
+
+                    conn = Database.getConnection();
+                    query = "SELECT * FROM teams WHERE id = ?";
+                    stmt = conn.prepareStatement(query);
+
+                    stmt.setInt(1, matchIds.get("team1_id"));
+                    rs = stmt.executeQuery();
+
+                    if (rs.next()) {
+                        match.put("team1", rs.getString("name"));
+                    }
+
+                    stmt.setInt(1, matchIds.get("team2_id"));
+                    rs = stmt.executeQuery();
+
+                    if (rs.next()) {
+                        match.put("team2", rs.getString("name"));
+                    }
+
                     response.getWriter().write(objectMapper.writeValueAsString(match));
                 } else {
                     response.setStatus(404);
@@ -57,12 +77,28 @@ public class MatchServlet extends HttpServlet {
                 while (rs.next()) {
                     Map<String, String> match = new HashMap<>();
                     match.put("id", String.valueOf(rs.getInt("id")));
-                    match.put("team1", rs.getString("team1"));
-                    match.put("team2", rs.getString("team2"));
-                    matches.add(match);
+
+                    conn = Database.getConnection();
+                    query = "SELECT * FROM teams WHERE id = ?";
+                    try (PreparedStatement stmt1 = conn.prepareStatement(query)) {
+                        stmt1.setInt(1, rs.getInt("team1_id"));
+                        rs = stmt1.executeQuery();
+
+                        if (rs.next()) {
+                            match.put("team1", rs.getString("name"));
+                        }
+
+                        stmt1.setInt(1, rs.getInt("team2_id"));
+                        rs = stmt1.executeQuery();
+
+                        if (rs.next()) {
+                            match.put("team2", rs.getString("name"));
+                        }
+
+                        matches.add(match);
+                    }
                 }
 
-                response.setContentType("application/json");
                 response.getWriter().write(objectMapper.writeValueAsString(matches));
             }
         } catch (SQLException e) {
@@ -77,6 +113,7 @@ public class MatchServlet extends HttpServlet {
             try {
                 if (rs != null) rs.close();
                 if (stmt != null) stmt.close();
+                if (conn != null) conn.close();
             } catch (SQLException e) {
                 System.err.println("Error closing resources: " + e.getMessage());
             }
@@ -106,20 +143,7 @@ public class MatchServlet extends HttpServlet {
                 return;
             }
 
-            String checkQuery = "SELECT id FROM matches WHERE team1 = ? AND team2 = ?";
-            checkStmt = conn.prepareStatement(checkQuery);
-            checkStmt.setString(1, team1);
-            checkStmt.setString(2, team2);
-            rs = checkStmt.executeQuery();
-
-            if (rs.next()) {
-                jsonResponse.put("message", "Match already exists");
-                response.setStatus(400);
-                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-                return;
-            }
-
-            String insertQuery = "INSERT INTO matches (team1, team2) VALUES (?, ?)";
+            String insertQuery = "INSERT INTO matches (team1_id, team2_id) VALUES (?, ?)";
             insertStmt = conn.prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS);
             insertStmt.setString(1, team1);
             insertStmt.setString(2, team2);
@@ -128,8 +152,7 @@ public class MatchServlet extends HttpServlet {
             rs = insertStmt.getGeneratedKeys();
             if (rs.next()) {
                 int matchId = rs.getInt(1);
-
-                String insertStatsQuery = "INSERT INTO match_stats (match_id, team1, team2, team1_wickets, team2_wickets, team1_balls, team2_balls, current_batting, is_completed, winner) " +
+                String insertStatsQuery = "INSERT INTO match_stats (match_id, team1_score, team2_score, team1_wickets, team2_wickets, team1_balls, team2_balls, current_batting, is_completed, winner) " +
                         "VALUES (?, 0, 0, 0, 0, 0, 0, 'team1', 'false', 'none')";
                 insertStatsStmt = conn.prepareStatement(insertStatsQuery);
                 insertStatsStmt.setInt(1, matchId);
@@ -146,10 +169,9 @@ public class MatchServlet extends HttpServlet {
         } finally {
             try {
                 if (rs != null) rs.close();
-                if (checkStmt != null) checkStmt.close();
+//                if (checkStmt != null) checkStmt.close();
                 if (insertStmt != null) insertStmt.close();
                 if (insertStatsStmt != null) insertStatsStmt.close();
-                if (conn != null) conn.close();
             } catch (SQLException e) {
                 System.err.println("Error closing resources: " + e.getMessage());
             }

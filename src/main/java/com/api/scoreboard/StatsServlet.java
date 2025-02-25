@@ -1,4 +1,4 @@
-package com.api.scoreboard_old;
+package com.api.scoreboard;
 
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import static com.api.util.Utils.validatePositiveIntegers;
 
-@WebServlet("/old/update-stats")
+@WebServlet("/update-stats")
 public class StatsServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> jsonResponse = new HashMap<>();
@@ -31,7 +31,7 @@ public class StatsServlet extends HttpServlet {
             return;
         }
 
-        Connection conn;
+        Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
 
@@ -51,8 +51,8 @@ public class StatsServlet extends HttpServlet {
             }
 
             Map<String, String> matchStats = new HashMap<>();
-            matchStats.put("team1", rs.getString("team1"));
-            matchStats.put("team2", rs.getString("team2"));
+            matchStats.put("team1_score", rs.getString("team1_score"));
+            matchStats.put("team2_score", rs.getString("team2_score"));
             matchStats.put("team1_wickets", rs.getString("team1_wickets"));
             matchStats.put("team2_wickets", rs.getString("team2_wickets"));
             matchStats.put("team1_balls", rs.getString("team1_balls"));
@@ -70,7 +70,7 @@ public class StatsServlet extends HttpServlet {
 
             if (matchStats.get("current_batting").equals("team1")) {
                 if (!validateStats(stats, "team1", matchStats, response)) return;
-                matchStats.put("team1", stats.get("team1"));
+                matchStats.put("team1_score", stats.get("team1_score"));
                 matchStats.put("team1_wickets", stats.get("team1_wickets"));
                 matchStats.put("team1_balls", stats.get("team1_balls"));
 
@@ -79,7 +79,7 @@ public class StatsServlet extends HttpServlet {
                 }
             } else if (matchStats.get("current_batting").equals("team2")) {
                 if (!validateStats(stats, "team2", matchStats, response)) return;
-                matchStats.put("team2", stats.get("team2"));
+                matchStats.put("team2_score", stats.get("team2_score"));
                 matchStats.put("team2_wickets", stats.get("team2_wickets"));
                 matchStats.put("team2_balls", stats.get("team2_balls"));
                 findWinner(matchStats);
@@ -98,6 +98,7 @@ public class StatsServlet extends HttpServlet {
             try {
                 if (rs != null) rs.close();
                 if (stmt != null) stmt.close();
+                if (conn != null) conn.close();
             } catch (SQLException e) {
                 System.err.println("Error closing resources: " + e.getMessage());
             }
@@ -105,7 +106,7 @@ public class StatsServlet extends HttpServlet {
     }
 
     private boolean validateStats(Map<String, String> stats, String team, Map<String, String> matchStats, HttpServletResponse response) throws IOException {
-        if (!validatePositiveIntegers(stats.get(team), stats.get(team + "_wickets"), stats.get(team + "_balls"))) {
+        if (!validatePositiveIntegers(stats.get(team + "_score"), stats.get(team + "_wickets"), stats.get(team + "_balls"))) {
             response.setStatus(400);
             jsonResponse.put("message", "Invalid Data " + team);
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
@@ -113,7 +114,7 @@ public class StatsServlet extends HttpServlet {
         }
         System.out.println(stats.get(team));
         System.out.println(matchStats.get(team));
-        if (Integer.parseInt(stats.get(team)) < Integer.parseInt(matchStats.get(team)) || Integer.parseInt(stats.get(team + "_wickets")) < Integer.parseInt(matchStats.get(team + "_wickets")) || Integer.parseInt(stats.get(team + "_balls")) < Integer.parseInt(matchStats.get(team + "_balls"))) {
+        if (Integer.parseInt(stats.get(team + "_score")) < Integer.parseInt(matchStats.get(team + "_score")) || Integer.parseInt(stats.get(team + "_wickets")) < Integer.parseInt(matchStats.get(team + "_wickets")) || Integer.parseInt(stats.get(team + "_balls")) < Integer.parseInt(matchStats.get(team + "_balls"))) {
             response.setStatus(400);
             jsonResponse.put("message", "Corrupted Data " + team);
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
@@ -131,16 +132,16 @@ public class StatsServlet extends HttpServlet {
     }
 
     private void findWinner(Map<String, String> matchStats) {
-        if (Integer.parseInt(matchStats.get("team1")) < Integer.parseInt(matchStats.get("team2"))) {
+        if (Integer.parseInt(matchStats.get("team1_score")) < Integer.parseInt(matchStats.get("team2_score"))) {
             matchStats.put("winner", "team2");
             matchStats.put("is_completed", "true");
         }
 
         if (Integer.parseInt(matchStats.get("team2_balls")) == 120 || Integer.parseInt(matchStats.get("team2_wickets")) == 10) {
             matchStats.put("is_completed", "true");
-            if (Integer.parseInt(matchStats.get("team1")) > Integer.parseInt(matchStats.get("team2"))) {
+            if (Integer.parseInt(matchStats.get("team1_score")) > Integer.parseInt(matchStats.get("team2_score"))) {
                 matchStats.put("winner", "team1");
-            } else if (Integer.parseInt(matchStats.get("team1")) < Integer.parseInt(matchStats.get("team2"))) {
+            } else if (Integer.parseInt(matchStats.get("team1_score")) < Integer.parseInt(matchStats.get("team2_score"))) {
                 matchStats.put("winner", "team2");
             } else {
                 matchStats.put("winner", "tie");
@@ -149,10 +150,10 @@ public class StatsServlet extends HttpServlet {
     }
 
     private void updateMatchStats(Connection conn, Map<String, String> matchStats, String matchId) throws SQLException {
-        String updateQuery = "UPDATE match_stats SET team1 = ?, team2 = ?, team1_wickets = ?, team2_wickets = ?, team1_balls = ?, " + "team2_balls = ?, current_batting = ?, is_completed = ?, winner = ? WHERE match_id = ?";
+        String updateQuery = "UPDATE match_stats SET team1_score = ?, team2_score = ?, team1_wickets = ?, team2_wickets = ?, team1_balls = ?, " + "team2_balls = ?, current_batting = ?, is_completed = ?, winner = ? WHERE match_id = ?";
         PreparedStatement updateStmt = conn.prepareStatement(updateQuery);
-        updateStmt.setString(1, matchStats.get("team1"));
-        updateStmt.setString(2, matchStats.get("team2"));
+        updateStmt.setString(1, matchStats.get("team1_score"));
+        updateStmt.setString(2, matchStats.get("team2_score"));
         updateStmt.setString(3, matchStats.get("team1_wickets"));
         updateStmt.setString(4, matchStats.get("team2_wickets"));
         updateStmt.setString(5, matchStats.get("team1_balls"));

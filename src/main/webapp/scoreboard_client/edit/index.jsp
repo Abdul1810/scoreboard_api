@@ -11,7 +11,7 @@
         let currentMatch = {};
 
         document.addEventListener('DOMContentLoaded', function () {
-            socket = new WebSocket('ws://localhost:8080/ws/matches?id=<%= request.getParameter("id") %>');
+            socket = new WebSocket('ws://localhost:8080/client/ws/matches?id=<%= request.getParameter("id") %>');
             setValueEmpty();
 
             socket.onopen = function () {
@@ -47,6 +47,7 @@
         });
 
         function updateUI() {
+            document.title = currentMatch.team1 + ' vs ' + currentMatch.team2;
             document.getElementById("team1").innerText = currentMatch.team1;
             document.getElementById("team2").innerText = currentMatch.team2;
             document.getElementById("team1score").value = currentMatch.team1_score;
@@ -77,7 +78,6 @@
             } else {
                 matchResultText = currentMatch.current_batting === "team1" ? "Team 1 is batting" : "Team 2 is batting";
 
-                // Color logic for batting
                 if (currentMatch.current_batting === "team1") {
                     document.getElementById("team1stats").style.backgroundColor = "aliceblue";
                     document.getElementById("team2stats").style.backgroundColor = "white";
