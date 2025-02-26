@@ -121,7 +121,6 @@ public class TeamServlet extends HttpServlet {
             }
             insertStmt.executeUpdate();
 
-            TeamListener.fireTeamsUpdate();
             jsonResponse.put("message", "Team created successfully");
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } catch (Exception e) {
@@ -224,7 +223,6 @@ public class TeamServlet extends HttpServlet {
             }
 
             MatchListener.fireMatchesUpdate();
-            TeamListener.fireTeamsUpdate();
             for (int matchId : matchIds) {
                 StatsListener.fireStatsRemove(String.valueOf(matchId));
             }

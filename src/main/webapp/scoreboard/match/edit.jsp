@@ -5,6 +5,9 @@
     <script>
         let socket;
         let current_batting = "team1";
+        let team1Players = [];
+        let team2Players = [];
+
         document.addEventListener('DOMContentLoaded', function () {
             fetch('/api/matches?id=<%= request.getParameter("id") %>')
                 .then(response => response.json())
@@ -16,40 +19,60 @@
                         document.title = data.team1 + ' vs ' + data.team2;
                         document.getElementById("team1").innerText = data.team1;
                         document.getElementById("team2").innerText = data.team2;
+                        team1Players = data.team1_players;
+                        team2Players = data.team2_players;
                     }
+                    initWS();
                 });
+        });
+
+        function initWS() {
             socket = new WebSocket('ws://localhost:8080/ws/stats?id=<%= request.getParameter("id") %>');
+
+            socket.onopen = function () {
+                console.log('Connected to the server');
+                document.getElementById("result").innerText = "Live Connected";
+            };
+
             socket.onmessage = function (event) {
                 const data = JSON.parse(event.data);
                 console.log(data);
-                document.getElementById("team1score").value = data.team1_score;
-                document.getElementById("team2score").value = data.team2_score;
-                document.getElementById("team1wickets").value = data.team1_wickets;
-                document.getElementById("team2wickets").value = data.team2_wickets;
+                // {"team1_balls":0,"team2_runs":[0,0,0,0,0,0,0,0,0,0,0],"winner":"none","team2_balls":0,"current_batting":"team1","team2_score":0,"team2_wickets":0,"team1_wickets":0,"team1_runs":[0,0,0,0,0,0,0,0,0,0,0],"is_completed":"false","team1_score":0}
+                // current_player score
+                document.getElementById("team1score").value = data.team1_runs[data.team1_wickets];
+                document.getElementById("team2score").value = data.team2_runs[data.team2_wickets];
+                // document.getElementById("team1wickets").value = data.team1_wickets;
+                // document.getElementById("team2wickets").value = data.team2_wickets;
                 document.getElementById("team1balls").value = data.team1_balls;
                 document.getElementById("team2balls").value = data.team2_balls;
                 if (data.is_completed === "false") {
                     if (data.current_batting === "team1") {
                         current_batting = "team1";
-                        document.getElementById("match-result").textContent = "Team 1 is batting";
+                        document.getElementById("match-result").textContent = `${team1Players[data.team1_wickets]} from Team 1 is batting`;
+                        document.getElementById("match-stats").textContent = `Team1: ${data.team1_score}/${data.team1_wickets}\t\tTeam2: ${data.team2_score}/${data.team2_wickets}`;
                         document.getElementById("team1stats").style.backgroundColor = "aliceblue";
                         document.getElementById("team2stats").style.backgroundColor = "white";
                         document.getElementById("team1score").disabled = false;
-                        document.getElementById("team1wickets").disabled = false;
+                        // document.getElementById("team1wickets").disabled = false;
+                        document.getElementById("team1-out").disabled = false;
                         document.getElementById("team1balls").disabled = false;
                         document.getElementById("team2score").disabled = true;
-                        document.getElementById("team2wickets").disabled = true;
+                        // document.getElementById("team2wickets").disabled = true;
+                        document.getElementById("team2-out").disabled = true;
                         document.getElementById("team2balls").disabled = true;
                     } else {
                         current_batting = "team2";
-                        document.getElementById("match-result").textContent = "Team 2 is batting";
+                        document.getElementById("match-result").textContent = `${team2Players[data.team2_wickets]} from Team 2 is batting`;
+                        document.getElementById("match-stats").textContent = `Team1: ${data.team1_score}/${data.team1_wickets}\t\tTeam2: ${data.team2_score}/${data.team2_wickets}`;
                         document.getElementById("team2stats").style.backgroundColor = "aliceblue";
                         document.getElementById("team1stats").style.backgroundColor = "white";
                         document.getElementById("team2score").disabled = false;
-                        document.getElementById("team2wickets").disabled = false;
+                        // document.getElementById("team2wickets").disabled = false;
+                        document.getElementById("team2-out").disabled = false;
                         document.getElementById("team2balls").disabled = false;
                         document.getElementById("team1score").disabled = true;
-                        document.getElementById("team1wickets").disabled = true;
+                        // document.getElementById("team1wickets").disabled = true;
+                        document.getElementById("team1-out").disabled = true;
                         document.getElementById("team1balls").disabled = true;
                     }
                 } else {
@@ -57,7 +80,7 @@
                         document.getElementById("match-result").textContent = "";
                         return;
                     }
-                    document.getElementById("match-result").textContent = data.winner !== 'tie' ? data.winner + " won the match" : "Tie";
+                    document.getElementById("match-result").textContent = data.winner !== 'Tie' ? data.winner + " won the match" : "Tie";
                     if (data.winner === "team1") {
                         document.getElementById("team1stats").style.backgroundColor = "lightgreen";
                         document.getElementById("team2stats").style.backgroundColor = "white";
@@ -69,10 +92,12 @@
                         document.getElementById("team2stats").style.backgroundColor = "peachpuff";
                     }
                     document.getElementById("team1score").disabled = true;
-                    document.getElementById("team1wickets").disabled = true;
+                    // document.getElementById("team1wickets").disabled = true;
+                    document.getElementById("team1-out").disabled = true;
                     document.getElementById("team1balls").disabled = true;
                     document.getElementById("team2score").disabled = true;
-                    document.getElementById("team2wickets").disabled = true;
+                    // document.getElementById("team2wickets").disabled = true;
+                    document.getElementById("team2-out").disabled = true;
                     document.getElementById("team2balls").disabled = true;
                 }
             };
@@ -82,39 +107,47 @@
                     location.reload();
                 }, 3000);
             };
-        });
+        }
 
-        function updateScore() {
-            const team1score = document.getElementById("team1score").value;
-            const team2score = document.getElementById("team2score").value;
-            const team1wickets = document.getElementById("team1wickets").value;
-            const team2wickets = document.getElementById("team2wickets").value;
-            const team1balls = document.getElementById("team1balls").value;
-            const team2balls = document.getElementById("team2balls").value;
-            if (isNaN(team1score) || isNaN(team2score)) {
-                document.getElementById("result").innerText = 'Please enter valid scores';
-                return;
-            }
-            if (team1score < 0 || team2score < 0) {
-                document.getElementById("result").innerText = 'Please enter valid scores';
-                return;
-            }
+        function updateScore(isOut = false) {
             const result = document.getElementById("result");
-            result.innerHTML = 'Updating...';
             let resultData = {};
+
             if (current_batting === "team1") {
+                const team1score = document.getElementById("team1score").value;
+                const team1balls = document.getElementById("team1balls").value;
+                if (isNaN(team1score)) {
+                    document.getElementById("result").innerText = 'Please enter valid score';
+                    return;
+                }
+                if (team1score < 0) {
+                    document.getElementById("result").innerText = 'Please enter valid score';
+                    return;
+                }
                 resultData = {
-                    team1_score: team1score,
-                    team1_wickets: team1wickets,
-                    team1_balls: team1balls,
+                    score: team1score,
+                    balls: team1balls,
+                    out: isOut ? "true" : "false"
                 };
             } else if (current_batting === "team2") {
+                const team2score = document.getElementById("team2score").value;
+                const team2balls = document.getElementById("team2balls").value;
+                if (isNaN(team2score)) {
+                    document.getElementById("result").innerText = 'Please enter valid score';
+                    return;
+                }
+                if (team2score < 0) {
+                    document.getElementById("result").innerText = 'Please enter valid score';
+                    return;
+                }
                 resultData = {
-                    team2_score: team2score,
-                    team2_wickets: team2wickets,
-                    team2_balls: team2balls,
+                    score: team2score,
+                    balls: team2balls,
+                    out: isOut ? "true" : "false"
                 };
             }
+
+            result.innerText = 'Updating...';
             fetch('/update-stats?id=<%= request.getParameter("id") %>', {
                 method: 'PUT',
                 headers: {
@@ -124,8 +157,50 @@
             })
                 .then(response => response.json())
                 .then(data => {
-                    result.innerHTML = data.message;
+                    document.getElementById("result").innerText = data.message;
                 });
+
+            <%--const team1score = document.getElementById("team1score").value;--%>
+            <%--const team2score = document.getElementById("team2score").value;--%>
+            <%--const team1wickets = document.getElementById("team1wickets").value;--%>
+            <%--const team2wickets = document.getElementById("team2wickets").value;--%>
+            <%--const team1balls = document.getElementById("team1balls").value;--%>
+            <%--const team2balls = document.getElementById("team2balls").value;--%>
+            <%--if (isNaN(team1score) || isNaN(team2score)) {--%>
+            <%--    document.getElementById("result").innerText = 'Please enter valid scores';--%>
+            <%--    return;--%>
+            <%--}--%>
+            <%--if (team1score < 0 || team2score < 0) {--%>
+            <%--    document.getElementById("result").innerText = 'Please enter valid scores';--%>
+            <%--    return;--%>
+            <%--}--%>
+            <%--const result = document.getElementById("result");--%>
+            <%--result.innerHTML = 'Updating...';--%>
+            <%--let resultData = {};--%>
+            <%--if (current_batting === "team1") {--%>
+            <%--    resultData = {--%>
+            <%--        team1_score: team1score,--%>
+            <%--        team1_wickets: team1wickets,--%>
+            <%--        team1_balls: team1balls,--%>
+            <%--    };--%>
+            <%--} else if (current_batting === "team2") {--%>
+            <%--    resultData = {--%>
+            <%--        team2_score: team2score,--%>
+            <%--        team2_wickets: team2wickets,--%>
+            <%--        team2_balls: team2balls,--%>
+            <%--    };--%>
+            <%--}--%>
+            <%--fetch('/update-stats?id=<%= request.getParameter("id") %>', {--%>
+            <%--    method: 'PUT',--%>
+            <%--    headers: {--%>
+            <%--        'Content-Type': 'application/json'--%>
+            <%--    },--%>
+            <%--    body: JSON.stringify(resultData),--%>
+            <%--})--%>
+            <%--    .then(response => response.json())--%>
+            <%--    .then(data => {--%>
+            <%--        result.innerHTML = data.message;--%>
+            <%--    });--%>
         }
     </script>
     <style>
@@ -142,8 +217,7 @@
         }
 
         #result, #match-result {
-            font-size: 18px;
-            font-weight: bold;
+            font-size: 16px;
             margin-bottom: 15px;
         }
 
@@ -181,45 +255,75 @@
             background-color: #ff1a5f;
             color: white;
             font-size: 16px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        button:hover {
+            background-color: #ff3366;
+        }
+
+        button:disabled:hover {
+            background-color: #ccc;
+        }
+
+        .update-btn {
+            background-color: #007bff;
+            color: white;
             padding: 10px 20px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             transition: background 0.3s;
         }
-
-        button:hover {
-            background-color: #ff3366;
-        }
     </style>
 </head>
 <body>
-<h3>Score Updater</h3>
+<h3>Scoreboard - Update</h3>
 <p id="result"></p>
 <p id="match-result"></p>
+<p id="match-stats"></p>
 <div class="container">
     <div id="team1stats" class="team-stats">
         <label id="team1"></label>
         <label for="team1score">Score:</label>
         <input type="number" id="team1score" placeholder="Enter score" value="0">
 
-        <label for="team1wickets">Wickets:</label>
-        <input type="number" id="team1wickets" placeholder="Enter wickets" value="0">
+<%--        <label for="team1wickets">Wickets:</label>--%>
+<%--        <input type="number" id="team1wickets" placeholder="Enter wickets" value="0">--%>
 
-        <label for="team1balls">Balls:</label>
+        <label for="team1balls">Total Balls:</label>
         <input type="number" id="team1balls" placeholder="Enter balls" value="0">
+
+        <button onclick="updateScore(true)" id="team1-out">
+            🚫 Out
+        </button>
     </div>
     <div id="team2stats" class="team-stats">
         <label id="team2"></label>
         <label for="team2score">Score:</label>
         <input type="number" id="team2score" placeholder="Enter score" value="0">
-        <label for="team2wickets">Wickets:</label>
-        <input type="number" id="team2wickets" placeholder="Enter wickets" value="0">
-        <label for="team2balls">Balls:</label>
+
+<%--        <label for="team2wickets">Wickets:</label>--%>
+<%--        <input type="number" id="team2wickets" placeholder="Enter wickets" value="0">--%>
+
+        <label for="team2balls">Total Balls:</label>
         <input type="number" id="team2balls" placeholder="Enter balls" value="0">
+
+        <button onclick="updateScore(true)" id="team2-out">
+            🚫 Out
+        </button>
     </div>
 </div>
 <br>
-<button onclick="updateScore()">Update</button>
+<button class="update-btn" onclick="updateScore(false)">Update</button>
 </body>
 </html>

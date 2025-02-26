@@ -100,79 +100,56 @@
         }
     </style>
     <script>
-        let socket;
         document.addEventListener('DOMContentLoaded', function () {
-            // fetchTeams();
-            socket = new WebSocket('ws://localhost:8080/scoreboard/teams');
-            socket.onopen = function () {
-                console.log('WebSocket connection established.');
-            };
-
-            socket.onmessage = function (event) {
-                console.log('Message received:', event.data);
-                updateUI(JSON.parse(event.data));
-            };
-
-            socket.onclose = function () {
-                console.log('WebSocket connection closed.');
-                setTimeout(() => {
-                    document.getElementById('result').innerText = 'Connection closed. Reconnecting...';
-                    location.reload();
-                }, 3000);
-            };
+            fetchTeams();
         });
 
-        function updateUI(data) {
-            const teamsContainer = document.getElementById('team-list');
-            teamsContainer.innerHTML = '';
+        function fetchTeams() {
+            fetch('/api/teams')
+                .then(response => {
+                    if (response.status >= 200 && response.status < 300) {
+                        return response.json();
+                    } else {
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.message || 'Something went wrong');
+                        });
+                    }
+                })
+                .then(data => {
+                    const teamsContainer = document.getElementById('team-list');
+                    teamsContainer.innerHTML = '';
+                    if (data && data.length > 0) {
+                        data.forEach(team => {
+                            const teamItem = document.createElement('div');
+                            teamItem.classList.add('team-item');
+                            teamItem.innerHTML = `
+                                <div class="info">
+                                    <span>${team.name}</span>
+                                    <br>
+                                    <p>Players:</p>
+                                    <ul class="players">
+                                        ${team.players.slice(0, 6).map(player => `<li>${player}</li>`).join('')}
+                                    </ul>
+                                    <ul class="players">
+                                        ${team.players.slice(6, 11).map(player => `<li>${player}</li>`).join('')}
+                                    </ul>
+                                </div>
+                                <button class="delete-btn" onclick="deleteTeam('${team.id}')">X Delete</button>
+                            `;
+                            teamsContainer.appendChild(teamItem);
+                        });
+                    } else {
+                        const noTeamsMessage = document.createElement('div');
+                        noTeamsMessage.classList.add('no-teams');
+                        noTeamsMessage.innerText = 'No teams found.';
+                        teamsContainer.appendChild(noTeamsMessage);
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+
+                });
         }
-
-        <%--function fetchTeams() {--%>
-        <%--    fetch('/api/teams')--%>
-        <%--        .then(response => {--%>
-        <%--            if (response.status >= 200 && response.status < 300) {--%>
-        <%--                return response.json();--%>
-        <%--            } else {--%>
-        <%--                return response.json().then(errorData => {--%>
-        <%--                    throw new Error(errorData.message || 'Something went wrong');--%>
-        <%--                });--%>
-        <%--            }--%>
-        <%--        })--%>
-        <%--        .then(data => {--%>
-        <%--            const teamsContainer = document.getElementById('team-list');--%>
-        <%--            teamsContainer.innerHTML = '';--%>
-        <%--            if (data && data.length > 0) {--%>
-        <%--                data.forEach(team => {--%>
-        <%--                    const teamItem = document.createElement('div');--%>
-        <%--                    teamItem.classList.add('team-item');--%>
-        <%--                    teamItem.innerHTML = `--%>
-        <%--                        <div class="info">--%>
-        <%--                            <span>${team.name}</span>--%>
-        <%--                            <br>--%>
-        <%--                            <p>Players:</p>--%>
-        <%--                            <ul class="players">--%>
-        <%--                                ${team.players.slice(0, 6).map(player => `<li>${player}</li>`).join('')}--%>
-        <%--                            </ul>--%>
-        <%--                            <ul class="players">--%>
-        <%--                                ${team.players.slice(6, 11).map(player => `<li>${player}</li>`).join('')}--%>
-        <%--                            </ul>--%>
-        <%--                        </div>--%>
-        <%--                        <button class="delete-btn" onclick="deleteTeam('${team.id}')">X Delete</button>--%>
-        <%--                    `;--%>
-        <%--                    teamsContainer.appendChild(teamItem);--%>
-        <%--                });--%>
-        <%--            } else {--%>
-        <%--                const noTeamsMessage = document.createElement('div');--%>
-        <%--                noTeamsMessage.classList.add('no-teams');--%>
-        <%--                noTeamsMessage.innerText = 'No teams found.';--%>
-        <%--                teamsContainer.appendChild(noTeamsMessage);--%>
-        <%--            }--%>
-        <%--        })--%>
-        <%--        .catch(error => {--%>
-        <%--            console.error(error);--%>
-
-        <%--        });--%>
-        <%--}--%>
 
         function deleteTeam(teamId) {
             if (confirm("Are you sure you want to delete this team?")) {

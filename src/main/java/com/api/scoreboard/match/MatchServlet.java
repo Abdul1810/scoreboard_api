@@ -41,7 +41,7 @@ public class MatchServlet extends HttpServlet {
                     matchIds.put("team1_id", rs.getInt("team1_id"));
                     matchIds.put("team2_id", rs.getInt("team2_id"));
 
-                    Map<String, String> match = new HashMap<>();
+                    Map<String, Object> match = new HashMap<>();
                     match.put("id", String.valueOf(matchIds.get("id")));
 
                     conn = Database.getConnection();
@@ -50,9 +50,22 @@ public class MatchServlet extends HttpServlet {
 
                     stmt.setInt(1, matchIds.get("team1_id"));
                     rs = stmt.executeQuery();
+                    /*
+                    {
+                        "id": "1",
+                        "team1": "India",
+                        "team2": "Australia"
+                        "team1_players": String[],
+                        "team2_players": String[]
+                     */
 
                     if (rs.next()) {
                         match.put("team1", rs.getString("name"));
+                        List<String> team1Players = new ArrayList<>();
+                        for (int i = 1; i <= 11; i++) {
+                            team1Players.add(rs.getString("player" + i));
+                        }
+                        match.put("team1_players", team1Players);
                     }
 
                     stmt.setInt(1, matchIds.get("team2_id"));
@@ -60,7 +73,14 @@ public class MatchServlet extends HttpServlet {
 
                     if (rs.next()) {
                         match.put("team2", rs.getString("name"));
+                        List<String> team2Players = new ArrayList<>();
+                        for (int i = 1; i <= 11; i++) {
+                            team2Players.add(rs.getString("player" + i));
+                        }
+                        match.put("team2_players", team2Players);
                     }
+
+
 
                     response.getWriter().write(objectMapper.writeValueAsString(match));
                 } else {
@@ -132,7 +152,6 @@ public class MatchServlet extends HttpServlet {
 
         try {
             conn = Database.getConnection();
-
             String team1 = match.get("team1");
             String team2 = match.get("team2");
 
@@ -152,8 +171,10 @@ public class MatchServlet extends HttpServlet {
             rs = insertStmt.getGeneratedKeys();
             if (rs.next()) {
                 int matchId = rs.getInt(1);
-                String insertStatsQuery = "INSERT INTO match_stats (match_id, team1_score, team2_score, team1_wickets, team2_wickets, team1_balls, team2_balls, current_batting, is_completed, winner) " +
-                        "VALUES (?, 0, 0, 0, 0, 0, 0, 'team1', 'false', 'none')";
+                String insertStatsQuery = "INSERT INTO match_stats (match_id, team1_player1_runs, team1_player2_runs, team1_player3_runs, team1_player4_runs, team1_player5_runs, team1_player6_runs, team1_player7_runs, team1_player8_runs, team1_player9_runs, team1_player10_runs, team1_player11_runs," +
+                        "team2_player1_runs, team2_player2_runs, team2_player3_runs, team2_player4_runs, team2_player5_runs, team2_player6_runs, team2_player7_runs, team2_player8_runs, team2_player9_runs, team2_player10_runs, team2_player11_runs," +
+                        "team1_wickets, team2_wickets, team1_balls, team2_balls, current_batting, is_completed, winner)" +
+                        " VALUES (?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'team1', 'false', 'none');";
                 insertStatsStmt = conn.prepareStatement(insertStatsQuery);
                 insertStatsStmt.setInt(1, matchId);
                 insertStatsStmt.executeUpdate();

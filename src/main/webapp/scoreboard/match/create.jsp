@@ -81,37 +81,36 @@
     </style>
     <script>
         let teamsData;
-        let socket;
-        // function fetchTeams() {
-        //     fetch('/api/teams')
-        //         .then(response => response.json())
-        //         .then(data => {
-        //             const team1Select = document.getElementById('team1');
-        //             const team2Select = document.getElementById('team2');
-        //
-        //             team1Select.innerHTML = '';
-        //             team2Select.innerHTML = '';
-        //             team1Select.appendChild(new Option("Select Team 1", ""));
-        //             team2Select.appendChild(new Option("Select Team 2", ""));
-        //
-        //             if (data && data.length > 0) {
-        //                 data.forEach(team => {
-        //                     const option1 = new Option(team.name, team.id);
-        //                     team1Select.appendChild(option1);
-        //
-        //                     const option2 = new Option(team.name, team.id);
-        //                     team2Select.appendChild(option2);
-        //                 });
-        //             } else {
-        //                 const noTeamOption = new Option('No teams available', '', true, true);
-        //                 team1Select.appendChild(noTeamOption);
-        //                 team2Select.appendChild(noTeamOption);
-        //             }
-        //         })
-        //         .catch(error => {
-        //             console.error("Error fetching teams:", error);
-        //         });
-        // }
+        function fetchTeams() {
+            fetch('/api/teams')
+                .then(response => response.json())
+                .then(data => {
+                    const team1Select = document.getElementById('team1');
+                    const team2Select = document.getElementById('team2');
+
+                    team1Select.innerHTML = '';
+                    team2Select.innerHTML = '';
+                    team1Select.appendChild(new Option("Select Team 1", ""));
+                    team2Select.appendChild(new Option("Select Team 2", ""));
+
+                    if (data && data.length > 0) {
+                        data.forEach(team => {
+                            const option1 = new Option(team.name, team.id);
+                            team1Select.appendChild(option1);
+
+                            const option2 = new Option(team.name, team.id);
+                            team2Select.appendChild(option2);
+                        });
+                    } else {
+                        const noTeamOption = new Option('No teams available', '', true, true);
+                        team1Select.appendChild(noTeamOption);
+                        team2Select.appendChild(noTeamOption);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching teams:", error);
+                });
+        }
 
         function handleTeam1Selection() {
             const team1Select = document.getElementById('team1');
@@ -160,46 +159,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // fetchTeams();
-            socket = new WebSocket('ws://localhost:8080/ws/teams');
-            socket.onopen = () => {
-                console.log('WebSocket connection established.');
-            };
-
-            socket.onmessage = event => {
-                console.log('Message received:', event.data);
-                teamsData = JSON.parse(event.data);
-                const team1Select = document.getElementById('team1');
-                const team2Select = document.getElementById('team2');
-
-                team1Select.innerHTML = '';
-                team2Select.innerHTML = '';
-                team1Select.appendChild(new Option("Select Team 1", ""));
-                team2Select.appendChild(new Option("Select Team 2", ""));
-
-                if (teamsData && teamsData.length > 0) {
-                    teamsData.forEach(team => {
-                        const option1 = new Option(team.name, team.id);
-                        team1Select.appendChild(option1);
-
-                        const option2 = new Option(team.name, team.id);
-                        team2Select.appendChild(option2);
-                    });
-                } else {
-                    const noTeamOption = new Option('No teams available', '', true, true);
-                    team1Select.appendChild(noTeamOption);
-                    team2Select.appendChild(noTeamOption);
-                }
-            };
-
-            socket.onclose = () => {
-                console.log('WebSocket connection closed.');
-                setTimeout(() => {
-                    document.getElementById('result').innerText = 'Connection closed. Reconnecting...';
-                    location.reload();
-                }, 3000);
-            };
-
+            fetchTeams();
             document.getElementById('team1').addEventListener('change', handleTeam1Selection);
         });
     </script>
