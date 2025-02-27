@@ -143,6 +143,8 @@
                 "Abdul", "Rahman", "Manoj", "Vishnu", "Saran", "Siva", "Satish", "Suresh", "Rajesh", "Kumar", "Ravi"
             ];
 
+            players.sort(() => Math.random() - 0.5);
+
             for (let i = 1; i <= 11; i++) {
                 document.getElementById(`player${i}`).value = players[i - 1];
             }

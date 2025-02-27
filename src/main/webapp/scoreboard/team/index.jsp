@@ -65,6 +65,7 @@
         .team-item .delete-btn {
             padding: 10px 15px;
             background-color: #dc3545;
+            font-size: 16px;
             color: white;
             border: none;
             border-radius: 5px;
@@ -74,6 +75,30 @@
 
         .team-item .delete-btn:hover {
             background-color: #c82333;
+        }
+
+        .team-item .open-btn {
+            text-decoration: none;
+            padding: 10px 15px;
+            background-color: #007bff;
+            font-size: 16px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .team-item .open-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .team-item .actions {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
         }
 
         .no-teams {
@@ -134,7 +159,11 @@
                                         ${team.players.slice(6, 11).map(player => `<li>${player}</li>`).join('')}
                                     </ul>
                                 </div>
-                                <button class="delete-btn" onclick="deleteTeam('${team.id}')">X Delete</button>
+                                <div class="actions">
+                                    <a class="open-btn" href="view.jsp?id=${team.id}">View</a>
+                                    <br/>
+                                    <button class="delete-btn" onclick="deleteTeam('${team.id}')">Delete</button>
+                                </div>
                             `;
                             teamsContainer.appendChild(teamItem);
                         });
@@ -153,7 +182,7 @@
 
         function deleteTeam(teamId) {
             if (confirm("Are you sure you want to delete this team?")) {
-                fetch(`/api/teams?id=${teamId}`, { method: 'DELETE' })
+                fetch(`/api/teams?id=${teamId}`, {method: 'DELETE'})
                     .then(response => {
                         if (response.status >= 200 && response.status < 300) {
                             return response.json();
@@ -165,11 +194,11 @@
                     })
                     .then(data => {
                         document.getElementById('result').innerText = data.message;
-                            fetchTeams();
+                        fetchTeams();
                     })
                     .catch(error => {
                         console.error("Delete Error:", error);
-                            fetchTeams();
+                        fetchTeams();
                         document.getElementById('result').innerText = error.message;
                     });
             }

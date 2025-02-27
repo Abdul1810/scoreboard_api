@@ -31,6 +31,7 @@ public class Database {
     public static void closeConnection() {
         try {
             if (conn != null && !conn.isClosed()) {
+                conn.close();
                 System.out.println("SQLite connection closed.");
             }
         } catch (SQLException e) {

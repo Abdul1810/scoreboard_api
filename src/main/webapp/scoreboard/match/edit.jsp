@@ -31,25 +31,26 @@
 
             socket.onopen = function () {
                 console.log('Connected to the server');
-                document.getElementById("result").innerText = "Live Connected";
             };
 
             socket.onmessage = function (event) {
                 const data = JSON.parse(event.data);
                 console.log(data);
                 // {"team1_balls":0,"team2_runs":[0,0,0,0,0,0,0,0,0,0,0],"winner":"none","team2_balls":0,"current_batting":"team1","team2_score":0,"team2_wickets":0,"team1_wickets":0,"team1_runs":[0,0,0,0,0,0,0,0,0,0,0],"is_completed":"false","team1_score":0}
-                // current_player score
+                updateScoreTable(data);
                 document.getElementById("team1score").value = data.team1_runs[data.team1_wickets];
                 document.getElementById("team2score").value = data.team2_runs[data.team2_wickets];
                 // document.getElementById("team1wickets").value = data.team1_wickets;
                 // document.getElementById("team2wickets").value = data.team2_wickets;
                 document.getElementById("team1balls").value = data.team1_balls;
                 document.getElementById("team2balls").value = data.team2_balls;
+                document.getElementById("team1-stats").textContent = `${data.team1_score}/${data.team1_wickets}`;
+                document.getElementById("team2-stats").textContent = `${data.team2_score}/${data.team2_wickets}`;
+
                 if (data.is_completed === "false") {
                     if (data.current_batting === "team1") {
                         current_batting = "team1";
                         document.getElementById("match-result").textContent = `${team1Players[data.team1_wickets]} from Team 1 is batting`;
-                        document.getElementById("match-stats").textContent = `Team1: ${data.team1_score}/${data.team1_wickets}\t\tTeam2: ${data.team2_score}/${data.team2_wickets}`;
                         document.getElementById("team1stats").style.backgroundColor = "aliceblue";
                         document.getElementById("team2stats").style.backgroundColor = "white";
                         document.getElementById("team1score").disabled = false;
@@ -63,7 +64,6 @@
                     } else {
                         current_batting = "team2";
                         document.getElementById("match-result").textContent = `${team2Players[data.team2_wickets]} from Team 2 is batting`;
-                        document.getElementById("match-stats").textContent = `Team1: ${data.team1_score}/${data.team1_wickets}\t\tTeam2: ${data.team2_score}/${data.team2_wickets}`;
                         document.getElementById("team2stats").style.backgroundColor = "aliceblue";
                         document.getElementById("team1stats").style.backgroundColor = "white";
                         document.getElementById("team2score").disabled = false;
@@ -80,6 +80,8 @@
                         document.getElementById("match-result").textContent = "";
                         return;
                     }
+                    document.getElementById("team1balls").value = data.team1_balls;
+                    document.getElementById("team2balls").value = data.team2_balls;
                     document.getElementById("match-result").textContent = data.winner !== 'Tie' ? data.winner + " won the match" : "Tie";
                     if (data.winner === "team1") {
                         document.getElementById("team1stats").style.backgroundColor = "lightgreen";
@@ -159,48 +161,46 @@
                 .then(data => {
                     document.getElementById("result").innerText = data.message;
                 });
+        }
 
-            <%--const team1score = document.getElementById("team1score").value;--%>
-            <%--const team2score = document.getElementById("team2score").value;--%>
-            <%--const team1wickets = document.getElementById("team1wickets").value;--%>
-            <%--const team2wickets = document.getElementById("team2wickets").value;--%>
-            <%--const team1balls = document.getElementById("team1balls").value;--%>
-            <%--const team2balls = document.getElementById("team2balls").value;--%>
-            <%--if (isNaN(team1score) || isNaN(team2score)) {--%>
-            <%--    document.getElementById("result").innerText = 'Please enter valid scores';--%>
-            <%--    return;--%>
-            <%--}--%>
-            <%--if (team1score < 0 || team2score < 0) {--%>
-            <%--    document.getElementById("result").innerText = 'Please enter valid scores';--%>
-            <%--    return;--%>
-            <%--}--%>
-            <%--const result = document.getElementById("result");--%>
-            <%--result.innerHTML = 'Updating...';--%>
-            <%--let resultData = {};--%>
-            <%--if (current_batting === "team1") {--%>
-            <%--    resultData = {--%>
-            <%--        team1_score: team1score,--%>
-            <%--        team1_wickets: team1wickets,--%>
-            <%--        team1_balls: team1balls,--%>
-            <%--    };--%>
-            <%--} else if (current_batting === "team2") {--%>
-            <%--    resultData = {--%>
-            <%--        team2_score: team2score,--%>
-            <%--        team2_wickets: team2wickets,--%>
-            <%--        team2_balls: team2balls,--%>
-            <%--    };--%>
-            <%--}--%>
-            <%--fetch('/update-stats?id=<%= request.getParameter("id") %>', {--%>
-            <%--    method: 'PUT',--%>
-            <%--    headers: {--%>
-            <%--        'Content-Type': 'application/json'--%>
-            <%--    },--%>
-            <%--    body: JSON.stringify(resultData),--%>
-            <%--})--%>
-            <%--    .then(response => response.json())--%>
-            <%--    .then(data => {--%>
-            <%--        result.innerHTML = data.message;--%>
-            <%--    });--%>
+        function updateScoreTable(data) {
+            const playerRow1 = document.getElementById("playerRow1");
+            const runsRow1 = document.getElementById("runsRow1");
+            const playerRow2 = document.getElementById("playerRow2");
+            const runsRow2 = document.getElementById("runsRow2");
+
+            playerRow1.innerHTML = "<th>Players</th>";
+            runsRow1.innerHTML = "<td>Runs</td>";
+            playerRow2.innerHTML = "<th>Players</th>";
+            runsRow2.innerHTML = "<td>Runs</td>";
+
+            for (let i = 0; i < team1Players.length; i++) {
+                const playerCell = document.createElement("th");
+                playerCell.textContent = team1Players[i] || "Player " + (i + 1);
+                playerRow1.appendChild(playerCell);
+
+                const runsCell = document.createElement("td");
+                if (data.team1_wickets > i) {
+                    runsCell.textContent = data.team1_runs[i] || 0;
+                } else {
+                    runsCell.textContent = "-";
+                }
+                runsRow1.appendChild(runsCell);
+            }
+
+            for (let i = 0; i < team2Players.length; i++) {
+                const playerCell = document.createElement("th");
+                playerCell.textContent = team2Players[i] || "Player " + (i + 1);
+                playerRow2.appendChild(playerCell);
+
+                const runsCell = document.createElement("td");
+                if (data.team2_wickets > i) {
+                    runsCell.textContent = data.team2_runs[i] || 0;
+                } else {
+                    runsCell.textContent = "-";
+                }
+                runsRow2.appendChild(runsCell);
+            }
         }
     </script>
     <style>
@@ -284,21 +284,56 @@
             cursor: pointer;
             transition: background 0.3s;
         }
+
+        table {
+            width: 80%;
+            margin: 30px auto;
+            border-collapse: collapse;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+        }
+
+        table th, table td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        table th {
+            background-color: #f2f2f2;
+            color: #333;
+            font-weight: bold;
+        }
+
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        table tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+
+        table tbody tr:hover {
+            background-color: #e6f7ff;
+        }
+
+        table td {
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
 <h3>Scoreboard - Update</h3>
 <p id="result"></p>
 <p id="match-result"></p>
-<p id="match-stats"></p>
 <div class="container">
     <div id="team1stats" class="team-stats">
         <label id="team1"></label>
+        <h3 id="team1-stats" style="display: flex; justify-content: space-between;margin:0"></h3>
         <label for="team1score">Score:</label>
         <input type="number" id="team1score" placeholder="Enter score" value="0">
 
-<%--        <label for="team1wickets">Wickets:</label>--%>
-<%--        <input type="number" id="team1wickets" placeholder="Enter wickets" value="0">--%>
 
         <label for="team1balls">Total Balls:</label>
         <input type="number" id="team1balls" placeholder="Enter balls" value="0">
@@ -309,11 +344,9 @@
     </div>
     <div id="team2stats" class="team-stats">
         <label id="team2"></label>
+        <h3 id="team2-stats" style="display: flex; justify-content: space-between;margin:0"></h3>
         <label for="team2score">Score:</label>
         <input type="number" id="team2score" placeholder="Enter score" value="0">
-
-<%--        <label for="team2wickets">Wickets:</label>--%>
-<%--        <input type="number" id="team2wickets" placeholder="Enter wickets" value="0">--%>
 
         <label for="team2balls">Total Balls:</label>
         <input type="number" id="team2balls" placeholder="Enter balls" value="0">
@@ -325,5 +358,34 @@
 </div>
 <br>
 <button class="update-btn" onclick="updateScore(false)">Update</button>
+<br />
+
+<h3>Team1 Scoretable</h3>
+<table border="1" style="width: 80%; margin: auto; border-collapse: collapse;">
+    <thead>
+    <tr id="playerRow1">
+        <th>Players</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr id="runsRow1">
+        <td>Runs</td>
+    </tr>
+    </tbody>
+</table>
+
+<h3>Team2 Scoretable</h3>
+<table border="1" style="width: 80%; margin: auto; border-collapse: collapse;">
+    <thead>
+    <tr id="playerRow2">
+        <th>Players</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr id="runsRow2">
+        <td>Runs</td>
+    </tr>
+    </tbody>
+</table>
 </body>
 </html>

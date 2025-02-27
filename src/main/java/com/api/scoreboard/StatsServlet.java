@@ -25,12 +25,6 @@ public class StatsServlet extends HttpServlet {
     protected void doPut(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String matchId = request.getParameter("id");
         Map<String, String> stats = objectMapper.readValue(request.getReader(), HashMap.class);
-        /*
-        {
-            score: int // score of the current player. current player can be calculated by wickets + 1
-            out: boolean // true if the player is out
-            balls: int // balls faced by the team not player specific
-         */
         if (matchId == null || matchId.trim().isEmpty()) {
             response.setStatus(400);
             jsonResponse.put("message", "Invalid match ID");
@@ -46,41 +40,6 @@ public class StatsServlet extends HttpServlet {
             conn = Database.getConnection();
 
             String query = "SELECT * FROM match_stats WHERE match_id = ?";
-            /*
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                match_id INTEGER NOT NULL,
-                team1_player1_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player2_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player3_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player4_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player5_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player6_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player7_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player8_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player9_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player10_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player11_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player1_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player2_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player3_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player4_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player5_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player6_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player7_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player8_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player9_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player10_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player11_runs INTEGER NOT NULL DEFAULT 0,
-                team1_wickets INTEGER NOT NULL DEFAULT 0,
-                team2_wickets INTEGER NOT NULL DEFAULT 0,
-                team1_balls INTEGER NOT NULL DEFAULT 0,
-                team2_balls INTEGER NOT NULL DEFAULT 0,
-                current_batting TEXT NOT NULL CHECK(current_batting IN ('team1', 'team2')) DEFAULT 'team1',
-                is_completed TEXT NOT NULL CHECK(is_completed IN ('true', 'false')) DEFAULT 'false',
-                winner TEXT NOT NULL CHECK(winner IN ('team1', 'team2', 'none', 'tie')) DEFAULT 'none',
-
-                team1_score and team2_score are not needed in database storing
-             */
             stmt = conn.prepareStatement(query);
             stmt.setInt(1, Integer.parseInt(matchId));
             rs = stmt.executeQuery();
@@ -143,14 +102,25 @@ public class StatsServlet extends HttpServlet {
             }
 
             if (matchStats.get("current_batting").equals("team1")) {
-                matchStats.put("team1_balls", String.valueOf(Integer.parseInt(stats.get("balls"))));
+                if (Integer.parseInt(stats.get("balls")) < Integer.parseInt(matchStats.get("team1_balls"))) {
+                    response.setStatus(400);
+                    jsonResponse.put("message", "Invalid Data team1");
+                    response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+                    return;
+                }
+                matchStats.put("team1_balls", stats.get("balls"));
                 if (!validateStats(stats, "team1", matchStats, response, currentPlayerOldScore)) return;
-
                 if (Integer.parseInt(matchStats.get("team1_balls")) == 120 || Integer.parseInt(matchStats.get("team1_wickets")) == 10 || Integer.parseInt(stats.get("balls")) == 120) {
                     matchStats.put("current_batting", "team2");
                 }
             } else if (matchStats.get("current_batting").equals("team2")) {
-                matchStats.put("team2_balls", String.valueOf(Integer.parseInt(stats.get("balls"))));
+                if (Integer.parseInt(stats.get("balls")) < Integer.parseInt(matchStats.get("team2_balls"))) {
+                    response.setStatus(400);
+                    jsonResponse.put("message", "Invalid Data team2");
+                    response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+                    return;
+                }
+                matchStats.put("team2_balls", stats.get("balls"));
                 if (!validateStats(stats, "team2", matchStats, response, currentPlayerOldScore)) return;
                 int team1_score = team1_scores.stream().mapToInt(Integer::intValue).sum();
                 int team2_score = team2_scores.stream().mapToInt(Integer::intValue).sum();
@@ -158,26 +128,13 @@ public class StatsServlet extends HttpServlet {
                     matchStats.put("winner", "team2");
                     matchStats.put("is_completed", "true");
                 }
-                if (matchStats.get("team1_balls").equals("120") && matchStats.get("team2_balls").equals("120")) {
+                if (matchStats.get("team2_balls").equals("120") || matchStats.get("team2_wickets").equals("10")) {
                     findWinner(matchStats, team1_score, team2_score);
                 }
             }
 
             updateMatchStats(matchStats, matchId, team1_scores, team2_scores);
             Map<String, Object> matchData = new HashMap<>();
-            /*
-                team1_score: int,
-                team2_score: int,
-                team1_wickets: int,
-                team2_wickets: int,
-                team1_balls: int,
-                team2_balls: int,
-                team1_runs: List<int>,
-                team2_runs: List<int>,
-                current_batting: string,
-                is_completed: boolean,
-                winner: string
-             */
             matchData.put("team1_score", team1_scores.stream().mapToInt(Integer::intValue).sum());
             matchData.put("team2_score", team2_scores.stream().mapToInt(Integer::intValue).sum());
             matchData.put("team1_wickets", matchStats.get("team1_wickets"));
@@ -286,7 +243,7 @@ public class StatsServlet extends HttpServlet {
             stmt.setInt(8, Integer.parseInt(matchId));
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw e;
+            System.out.println("Error updating match stats: " + e.getMessage());
         } finally {
             try {
                 if (stmt != null) stmt.close();

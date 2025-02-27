@@ -22,27 +22,6 @@ public class TeamServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        /*
-        db structure
-        name: string
-        player1: string
-        player2: string
-        player3: string
-        player4: string
-        player5: string
-        player6: string
-        player7: string
-        player8: string
-        player9: string
-        player10: string
-        player11: string
-         */
-        /*
-        request body
-        name: string
-        players: string[]
-         */
-        // validate input
         Map<String, Object> team = objectMapper.readValue(request.getReader(), HashMap.class);
         System.out.println(team);
 
@@ -139,40 +118,79 @@ public class TeamServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String matchId = request.getParameter("id");
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
 
-        try {
-            conn = Database.getConnection();
+        if (matchId == null) {
 
-            String query = "SELECT * FROM teams";
-            stmt = conn.prepareStatement(query);
-            rs = stmt.executeQuery();
-
-            List<Map<String, Object>> teams = new ArrayList<>();
-            while (rs.next()) {
-                Map<String, Object> team = new HashMap<>();
-                team.put("id", rs.getInt("id"));
-                team.put("name", rs.getString("name"));
-                team.put("players", new ArrayList<>());
-                for (int i = 1; i <= 11; i++) {
-                    ((List<String>) team.get("players")).add(rs.getString("player" + i));
-                }
-                teams.add(team);
-            }
-
-            response.getWriter().write(objectMapper.writeValueAsString(teams));
-        } catch (Exception e) {
-            jsonResponse.put("message", "Database error: " + e.getMessage());
-            response.setStatus(500);
-            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-        } finally {
             try {
-                if (rs != null) rs.close();
-                if (stmt != null) stmt.close();
+                conn = Database.getConnection();
+
+                String query = "SELECT * FROM teams";
+                stmt = conn.prepareStatement(query);
+                rs = stmt.executeQuery();
+
+                List<Map<String, Object>> teams = new ArrayList<>();
+                while (rs.next()) {
+                    Map<String, Object> team = new HashMap<>();
+                    team.put("id", rs.getInt("id"));
+                    team.put("name", rs.getString("name"));
+                    team.put("players", new ArrayList<>());
+                    for (int i = 1; i <= 11; i++) {
+                        ((List<String>) team.get("players")).add(rs.getString("player" + i));
+                    }
+                    teams.add(team);
+                }
+
+                response.getWriter().write(objectMapper.writeValueAsString(teams));
             } catch (Exception e) {
-                System.err.println("Error closing resources: " + e.getMessage());
+                jsonResponse.put("message", "Database error: " + e.getMessage());
+                response.setStatus(500);
+                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+            } finally {
+                try {
+                    if (rs != null) rs.close();
+                    if (stmt != null) stmt.close();
+                } catch (Exception e) {
+                    System.err.println("Error closing resources: " + e.getMessage());
+                }
+            }
+        } else {
+            try {
+                conn = Database.getConnection();
+
+                String query = "SELECT * FROM teams WHERE id = ?";
+                stmt = conn.prepareStatement(query);
+                stmt.setInt(1, Integer.parseInt(matchId));
+                rs = stmt.executeQuery();
+
+                if (rs.next()) {
+                    Map<String, Object> team = new HashMap<>();
+                    team.put("id", rs.getInt("id"));
+                    team.put("name", rs.getString("name"));
+                    team.put("players", new ArrayList<>());
+                    for (int i = 1; i <= 11; i++) {
+                        ((List<String>) team.get("players")).add(rs.getString("player" + i));
+                    }
+                    response.getWriter().write(objectMapper.writeValueAsString(team));
+                } else {
+                    jsonResponse.put("message", "Team not found");
+                    response.setStatus(404);
+                    response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+                }
+            } catch (Exception e) {
+                jsonResponse.put("message", "Database error: " + e.getMessage());
+                response.setStatus(500);
+                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+            } finally {
+                try {
+                    if (rs != null) rs.close();
+                    if (stmt != null) stmt.close();
+                } catch (Exception e) {
+                    System.err.println("Error closing resources: " + e.getMessage());
+                }
             }
         }
     }
