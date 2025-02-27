@@ -150,7 +150,7 @@
                 })
                 .catch(error => {
                     console.error("Fetch Error:", error);
-                    alert(error.message);
+                    document.getElementById('result').innerText = error.message;
                 });
         }
     </script>

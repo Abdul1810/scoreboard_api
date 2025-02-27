@@ -180,7 +180,7 @@
                 playerRow1.appendChild(playerCell);
 
                 const runsCell = document.createElement("td");
-                if (data.team1_wickets > i) {
+                if (data.team1_wickets >= i) {
                     runsCell.textContent = data.team1_runs[i] || 0;
                 } else {
                     runsCell.textContent = "-";
@@ -194,7 +194,7 @@
                 playerRow2.appendChild(playerCell);
 
                 const runsCell = document.createElement("td");
-                if (data.team2_wickets > i) {
+                if (data.team2_wickets >= i) {
                     runsCell.textContent = data.team2_runs[i] || 0;
                 } else {
                     runsCell.textContent = "-";

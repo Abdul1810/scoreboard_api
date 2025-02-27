@@ -124,7 +124,7 @@
                 }
                 data.forEach(match => {
                     const matchDiv = document.createElement('a');
-                    matchDiv.href = window.location.pathname + 'score?id=' + match.id;
+                    matchDiv.href = window.location.href + 'score?id=' + match.id;
                     matchDiv.classList.add('match-item');
                     matchDiv.style.textDecoration = 'none';
 

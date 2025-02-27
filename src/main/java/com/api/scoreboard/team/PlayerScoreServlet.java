@@ -26,7 +26,7 @@ public class PlayerScoreServlet extends HttpServlet {
 
         if (player == null || player.isEmpty() || teamId == null || teamId.isEmpty()) {
             response.setStatus(404);
-            jsonResponse.put("error", "Missing parameters");
+            jsonResponse.put("message", "Missing parameters");
             try {
                 response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
             } catch (IOException e) {
@@ -39,16 +39,11 @@ public class PlayerScoreServlet extends HttpServlet {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         int playerIndex = -1;
-        int totalScore = 0;
 
         try {
             conn = Database.getConnection();
 
-            stmt = conn.prepareStatement(
-                    "SELECT * FROM teams WHERE id = ? AND (" +
-                            "player1 = ? OR player2 = ? OR player3 = ? OR player4 = ? OR player5 = ? OR " +
-                            "player6 = ? OR player7 = ? OR player8 = ? OR player9 = ? OR player10 = ? OR player11 = ?)"
-            );
+            stmt = conn.prepareStatement("SELECT * FROM teams WHERE id = ? AND (" + "player1 = ? OR player2 = ? OR player3 = ? OR player4 = ? OR player5 = ? OR " + "player6 = ? OR player7 = ? OR player8 = ? OR player9 = ? OR player10 = ? OR player11 = ?)");
 
             stmt.setString(1, teamId);
             for (int i = 2; i <= 12; i++) {
@@ -59,7 +54,7 @@ public class PlayerScoreServlet extends HttpServlet {
 
             if (!rs.next()) {
                 response.setStatus(404);
-                jsonResponse.put("error", "player not found");
+                jsonResponse.put("message", "player not found");
                 try {
                     response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 } catch (IOException e) {
@@ -77,7 +72,7 @@ public class PlayerScoreServlet extends HttpServlet {
 
             if (playerIndex == -1) {
                 response.setStatus(404);
-                jsonResponse.put("error", "player not found in team");
+                jsonResponse.put("message", "player not found in team");
                 try {
                     response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 } catch (IOException e) {
@@ -87,29 +82,37 @@ public class PlayerScoreServlet extends HttpServlet {
             }
 
             String query =
-                    "SELECT " +
-                            "SUM(CASE WHEN m.team1_id = ? THEN ms.team1_player" + playerIndex + "_runs ELSE ms.team2_player" + playerIndex + "_runs END) AS total_score, " +
-                            "COUNT(*) AS matches_played " +
-                            "FROM matches m " +
-                            "JOIN match_stats ms ON m.id = ms.match_id " +
-                            "WHERE m.team1_id = ? OR m.team2_id = ?";
+                "SELECT SUM(CASE WHEN m.team1_id = ? THEN ms.team1_player" + playerIndex + "_runs ELSE ms.team2_player" + playerIndex + "_runs END) AS total_score, " +
+                "COUNT(CASE WHEN (m.team1_id = ? AND ms.team1_wickets >= " + (playerIndex-1) + ") OR " +
+                "(m.team2_id = ? AND ms.team2_wickets >= " + (playerIndex-1) + ") THEN 1 END) AS matches_played " +
+                "FROM matches m " +
+                "JOIN match_stats ms ON m.id = ms.match_id " +
+                "WHERE m.team1_id = ? OR m.team2_id = ?";
 
             stmt = conn.prepareStatement(query);
             stmt.setString(1, teamId);
             stmt.setString(2, teamId);
             stmt.setString(3, teamId);
+            stmt.setString(4, teamId);
+            stmt.setString(5, teamId);
             rs = stmt.executeQuery();
 
             if (rs.next()) {
-                totalScore = rs.getInt("total_score");
-                int matchesPlayed = rs.getInt("matches_played");  // Get match count from SQL
+                int totalScore = rs.getInt("total_score");
+                int matchesPlayed = rs.getInt("matches_played");
 
-                jsonResponse.put("player", player);
-                jsonResponse.put("team_id", teamId);
-                jsonResponse.put("total_score", totalScore);
-                jsonResponse.put("matches_played", matchesPlayed);
+                if (matchesPlayed == 0) {
+                    response.setStatus(404);
+                    jsonResponse.put("message", player + " has not batted in any matches");
+                } else {
+                    jsonResponse.put("player", player);
+                    jsonResponse.put("team_id", teamId);
+                    jsonResponse.put("total_score", totalScore);
+                    jsonResponse.put("matches_played", matchesPlayed);
+                }
             } else {
-                jsonResponse.put("error", "No matches found");
+                response.setStatus(404);
+                jsonResponse.put("message", player + " has not batted in any matches");
             }
 
             try {

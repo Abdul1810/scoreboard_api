@@ -171,13 +171,26 @@ public class MatchServlet extends HttpServlet {
             rs = insertStmt.getGeneratedKeys();
             if (rs.next()) {
                 int matchId = rs.getInt(1);
-                String insertStatsQuery = "INSERT INTO match_stats (match_id, team1_player1_runs, team1_player2_runs, team1_player3_runs, team1_player4_runs, team1_player5_runs, team1_player6_runs, team1_player7_runs, team1_player8_runs, team1_player9_runs, team1_player10_runs, team1_player11_runs," +
-                        "team2_player1_runs, team2_player2_runs, team2_player3_runs, team2_player4_runs, team2_player5_runs, team2_player6_runs, team2_player7_runs, team2_player8_runs, team2_player9_runs, team2_player10_runs, team2_player11_runs," +
-                        "team1_wickets, team2_wickets, team1_balls, team2_balls, current_batting, is_completed, winner)" +
-                        " VALUES (?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'team1', 'false', 'none');";
+                String insertStatsQuery = "INSERT INTO match_stats (" +
+                        "match_id, team1_player1_runs, team1_player2_runs, team1_player3_runs, team1_player4_runs, team1_player5_runs, " +
+                        "team1_player6_runs, team1_player7_runs, team1_player8_runs, team1_player9_runs, team1_player10_runs, team1_player11_runs, " +
+                        "team2_player1_runs, team2_player2_runs, team2_player3_runs, team2_player4_runs, team2_player5_runs, " +
+                        "team2_player6_runs, team2_player7_runs, team2_player8_runs, team2_player9_runs, team2_player10_runs, team2_player11_runs, " +
+                        "team1_player1_wickets, team1_player2_wickets, team1_player3_wickets, team1_player4_wickets, team1_player5_wickets, " +
+                        "team1_player6_wickets, team1_player7_wickets, team1_player8_wickets, team1_player9_wickets, team1_player10_wickets, team1_player11_wickets, " +
+                        "team2_player1_wickets, team2_player2_wickets, team2_player3_wickets, team2_player4_wickets, team2_player5_wickets, " +
+                        "team2_player6_wickets, team2_player7_wickets, team2_player8_wickets, team2_player9_wickets, team2_player10_wickets, team2_player11_wickets, " +
+                        "team1_balls, team2_balls, current_batting, is_completed, winner) " +
+                        "VALUES (?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, " +
+                        "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, " +
+                        "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, " +
+                        "0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, " +
+                        "0, 0, 'team1', 'false', 'none');";
+
                 insertStatsStmt = conn.prepareStatement(insertStatsQuery);
                 insertStatsStmt.setInt(1, matchId);
                 insertStatsStmt.executeUpdate();
+
             }
 
             MatchListener.fireMatchesUpdate();
