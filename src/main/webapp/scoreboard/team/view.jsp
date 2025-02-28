@@ -117,16 +117,6 @@
             background-color: #0056b3;
             transform: translateY(-2px);
         }
-
-        .error-message {
-            color: #dc3545;
-            font-size: 16px;
-            text-align: center;
-            padding: 15px;
-            background-color: #f8d7da;
-            border-radius: 6px;
-            margin: 15px 0;
-        }
     </style>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -167,7 +157,7 @@
                 })
                 .catch(error => {
                     console.error("Fetch Error:", error);
-                    document.getElementById('team-info').innerHTML = `<p class="error-message">${error.message}</p>`;
+                    document.getElementById('team-info').innerText = error.message;
                 });
         }
 
@@ -188,7 +178,7 @@
                 })
                 .catch(error => {
                     console.error("Fetch Error:", error);
-                    showResult(error.message, true);
+                    document.getElementById('result').innerText = error.message;
                 });
         }
 
@@ -209,22 +199,8 @@
                 })
                 .catch(error => {
                     console.error("Fetch Error:", error);
-                    showResult(error.message, true);
+                    document.getElementById('result').innerText = error.message;
                 });
-        }
-
-        function showResult(message, isError = false) {
-            const resultElement = document.getElementById('result');
-            resultElement.innerText = message;
-            resultElement.className = "show";
-
-            if (isError) {
-                resultElement.style.color = "#dc3545";
-                resultElement.style.backgroundColor = "#f8d7da";
-            } else {
-                resultElement.style.color = "#007bff";
-                resultElement.style.backgroundColor = "#f8f9fa";
-            }
         }
     </script>
 </head>

@@ -42,7 +42,6 @@ public class PlayerWicketsServlet extends HttpServlet {
             int playerIndex = getPlayerIndex(conn, teamId, player);
 
             if (playerIndex == -1) {
-                response.setStatus(404);
                 jsonResponse.put("message", "Player not found in team");
                 response.setStatus(404);
                 try {
@@ -56,7 +55,6 @@ public class PlayerWicketsServlet extends HttpServlet {
             fetchPlayerWicketsData(conn, jsonResponse, teamId, playerIndex, player);
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } catch (Exception e) {
-            response.setStatus(500);
             jsonResponse.put("message", "Database error: " + e.getMessage());
             response.setStatus(500);
             try {
@@ -105,14 +103,16 @@ public class PlayerWicketsServlet extends HttpServlet {
         PreparedStatement stmt = null;
         ResultSet rs = null;
 
-        String query = "SELECT ms.match_id, " + "SUM(CASE WHEN m.team1_id = ? THEN ms.team1_player" + playerIndex + "_wickets " + "ELSE ms.team2_player" + playerIndex + "_wickets END) AS total_wickets, " + "SUM(CASE WHEN m.team1_id = ? THEN ms.team2_balls ELSE ms.team1_balls END) AS team_balls " + "FROM matches m " + "JOIN match_stats ms ON m.id = ms.match_id " + "WHERE m.team1_id = ? OR m.team2_id = ? " + "GROUP BY ms.match_id";
+        String query = "SELECT ms.*, ts1.*, ts2.* " +
+                "FROM match_stats ms " +
+                "JOIN team_stats ts1 ON ms.team1_stats_id = ts1.id " +
+                "JOIN team_stats ts2 ON ms.team2_stats_id = ts2.id " +
+                "WHERE ts1.team_id = ? OR ts2.team_id = ?";
 
         try {
             stmt = conn.prepareStatement(query);
             stmt.setString(1, teamId);
             stmt.setString(2, teamId);
-            stmt.setString(3, teamId);
-            stmt.setString(4, teamId);
             rs = stmt.executeQuery();
 
             int totalWickets = 0;
@@ -120,31 +120,43 @@ public class PlayerWicketsServlet extends HttpServlet {
             int matchesBowled = 0;
 
             while (rs.next()) {
-                int matchWickets = rs.getInt("total_wickets");
-                int teamBalls = rs.getInt("team_balls");
-                int ballsBowled = 0;
+                int team1StatsId = rs.getInt("ts1.id");
+                int teamId1 = rs.getInt("ts1.team_id");
+                int team2StatsId = rs.getInt("ts2.id");
+                int teamId2 = rs.getInt("ts2.team_id");
 
-                if (teamBalls <= 66) {
-                    if (playerIndex * 6 <= teamBalls) {
-                        ballsBowled = 6;
-                    } else if ((playerIndex - 1) * 6 < teamBalls) {
-                        ballsBowled = teamBalls - (playerIndex - 1) * 6;
+                int matchWickets = 0;
+                int opponentBalls = 0;
+
+                if (teamId1 == Integer.parseInt(teamId)) {
+                    matchWickets = rs.getInt("ts1.player" + playerIndex + "_wickets");
+                    opponentBalls = rs.getInt("ts2.balls");
+                } else {
+                    matchWickets = rs.getInt("ts2.player" + playerIndex + "_wickets");
+                    opponentBalls = rs.getInt("ts1.balls");
+                }
+
+                totalWickets += matchWickets;
+
+                if (opponentBalls <= 66) {
+                    if (playerIndex * 6 <= opponentBalls) {
+                        totalBallsBowled += 6;
+                    } else if ((playerIndex - 1) * 6 < opponentBalls) {
+                        totalBallsBowled += opponentBalls - (playerIndex - 1) * 6;
                     }
                 } else {
-                    ballsBowled = 6;
-                    int remainingBalls = teamBalls - 66;
+                    totalBallsBowled += 6;
+                    int remainingBalls = opponentBalls - 66;
                     if (playerIndex <= 9) {
                         if (playerIndex * 6 <= remainingBalls) {
-                            ballsBowled += 6;
+                            totalBallsBowled += 6;
                         } else if ((playerIndex - 1) * 6 < remainingBalls) {
-                            ballsBowled += remainingBalls - (playerIndex - 1) * 6;
+                            totalBallsBowled += remainingBalls - (playerIndex - 1) * 6;
                         }
                     }
                 }
 
-                totalWickets += matchWickets;
-                totalBallsBowled += ballsBowled;
-                if (ballsBowled > 0) {
+                if (totalBallsBowled > 0) {
                     matchesBowled++;
                 }
             }
@@ -163,13 +175,4 @@ public class PlayerWicketsServlet extends HttpServlet {
             }
         }
     }
-
-//    private void writeResponse(HttpServletResponse response, Map<String, Object> jsonResponse) {
-//        response.setContentType("application/json");
-//        try {
-//            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-//        } catch (IOException e) {
-//            System.out.println("Error writing response: " + e.getMessage());
-//        }
-//    }
 }

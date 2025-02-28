@@ -35,8 +35,63 @@ public class StatsServlet extends HttpServlet {
 
         try {
             conn = Database.getConnection();
-
-            String query = "SELECT * FROM match_stats WHERE match_id = ?";
+//            CREATE TABLE match_stats
+//            (
+//                    id              INT AUTO_INCREMENT PRIMARY KEY,
+//                    match_id        INT      NOT NULL,
+//                    team1_stats_id  INT      NOT NULL,
+//                    team2_stats_id  INT      NOT NULL,
+//                    is_completed    ENUM('true', 'false') NOT NULL DEFAULT 'false',
+//            winner          ENUM('team1', 'team2', 'none', 'tie') NOT NULL DEFAULT 'none',
+//            current_batting ENUM('team1', 'team2') NOT NULL DEFAULT 'team1',
+//            created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+//            FOREIGN KEY (match_id) REFERENCES matches (id) ON DELETE CASCADE,
+//    FOREIGN KEY (team1_stats_id) REFERENCES team_stats (id) ON DELETE CASCADE,
+//            FOREIGN KEY (team2_stats_id) REFERENCES team_stats (id) ON DELETE CASCADE
+//);
+//
+//    CREATE TABLE team_stats
+//            (
+//                    id               INT AUTO_INCREMENT PRIMARY KEY,
+//                    team_id          INT           NOT NULL,
+//                    player1_runs     INT DEFAULT 0,
+//                    player2_runs     INT DEFAULT 0,
+//                    player3_runs     INT DEFAULT 0,
+//                    player4_runs     INT DEFAULT 0,
+//                    player5_runs     INT DEFAULT 0,
+//                    player6_runs     INT DEFAULT 0,
+//                    player7_runs     INT DEFAULT 0,
+//                    player8_runs     INT DEFAULT 0,
+//                    player9_runs     INT DEFAULT 0,
+//                    player10_runs    INT DEFAULT 0,
+//                    player11_runs    INT DEFAULT 0,
+//                    player1_wickets  INT DEFAULT 0,
+//                    player2_wickets  INT DEFAULT 0,
+//                    player3_wickets  INT DEFAULT 0,
+//                    player4_wickets  INT DEFAULT 0,
+//                    player5_wickets  INT DEFAULT 0,
+//                    player6_wickets  INT DEFAULT 0,
+//                    player7_wickets  INT DEFAULT 0,
+//                    player8_wickets  INT DEFAULT 0,
+//                    player9_wickets  INT DEFAULT 0,
+//                    player10_wickets INT DEFAULT 0,
+//                    player11_wickets INT DEFAULT 0,
+//                    balls            INT DEFAULT 0 NOT NULL,
+//                    total_score      INT GENERATED ALWAYS AS (
+//                            player1_runs + player2_runs + player3_runs + player4_runs + player5_runs +
+//                                    player6_runs + player7_runs + player8_runs + player9_runs + player10_runs + player11_runs
+//                    ) VIRTUAL,
+//                    total_wickets    INT GENERATED ALWAYS AS (
+//                            player1_wickets + player2_wickets + player3_wickets + player4_wickets + player5_wickets +
+//                                    player6_wickets + player7_wickets + player8_wickets + player9_wickets + player10_wickets + player11_wickets
+//                    ) VIRTUAL,
+//                    FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE
+//            );
+            String query = "SELECT ms.*, ts1.*, ts2.* " +
+                    "FROM match_stats ms " +
+                    "JOIN team_stats ts1 ON ms.team1_stats_id = ts1.id " +
+                    "JOIN team_stats ts2 ON ms.team2_stats_id = ts2.id " +
+                    "WHERE ms.match_id = ?";
             stmt = conn.prepareStatement(query);
             stmt.setInt(1, Integer.parseInt(matchId));
             rs = stmt.executeQuery();
@@ -54,31 +109,38 @@ public class StatsServlet extends HttpServlet {
             List<Integer> team2_wickets = new ArrayList<>();
 
             for (int i = 1; i <= 11; i++) {
-                team1_scores.add(rs.getInt("team1_player" + i + "_runs"));
-                team2_scores.add(rs.getInt("team2_player" + i + "_runs"));
+                team1_scores.add(rs.getInt("ts1.player" + i + "_runs"));
+                team2_scores.add(rs.getInt("ts2.player" + i + "_runs"));
             }
 
             for (int i = 1; i <= 11; i++) {
-                team1_wickets.add(rs.getInt("team1_player" + i + "_wickets"));
-                team2_wickets.add(rs.getInt("team2_player" + i + "_wickets"));
+                team1_wickets.add(rs.getInt("ts1.player" + i + "_wickets"));
+                team2_wickets.add(rs.getInt("ts2.player" + i + "_wickets"));
             }
 
-            int current_player = rs.getInt("team1_wickets") + 1;
-            String currentBattingTeam = rs.getString("current_batting");
+            int current_player = rs.getInt("ts2.total_wickets") + 1;
+            String currentBattingTeam = rs.getString("ms.current_batting");
             if (currentBattingTeam.equals("team2")) {
-                current_player = rs.getInt("team2_wickets") + 1;
+                current_player = rs.getInt("ts1.total_wickets") + 1;
             }
 
-            int currentPlayerOldScore = rs.getInt(currentBattingTeam + "_player" + current_player + "_runs");
+            int currentPlayerOldScore = rs.getInt(currentBattingTeam.equals("team1") ? "ts1.player" + current_player + "_runs" : "ts2.player" + current_player + "_runs");
 
             Map<String, String> matchStats = new HashMap<>();
-            matchStats.put("team1_wickets", rs.getString("team1_wickets"));
-            matchStats.put("team2_wickets", rs.getString("team2_wickets"));
-            matchStats.put("team1_balls", rs.getString("team1_balls"));
-            matchStats.put("team2_balls", rs.getString("team2_balls"));
-            matchStats.put("current_batting", currentBattingTeam);
-            matchStats.put("is_completed", rs.getString("is_completed"));
-            matchStats.put("winner", rs.getString("winner"));
+            matchStats.put("team1_wickets", rs.getString("ts1.total_wickets"));
+            matchStats.put("team2_wickets", rs.getString("ts2.total_wickets"));
+            matchStats.put("team1_balls", rs.getString("ts1.balls"));
+            matchStats.put("team2_balls", rs.getString("ts2.balls"));
+            matchStats.put("current_batting", rs.getString("ms.current_batting"));
+            matchStats.put("is_completed", rs.getString("ms.is_completed"));
+            matchStats.put("winner", rs.getString("ms.winner"));
+//            matchStats.put("team1_wickets", rs.getString("team1_wickets"));
+//            matchStats.put("team2_wickets", rs.getString("team2_wickets"));
+//            matchStats.put("team1_balls", rs.getString("team1_balls"));
+//            matchStats.put("team2_balls", rs.getString("team2_balls"));
+//            matchStats.put("current_batting", currentBattingTeam);
+//            matchStats.put("is_completed", rs.getString("is_completed"));
+//            matchStats.put("winner", rs.getString("winner"));
 
             if (stats.get("out").equals("true")) {
                 if (currentBattingTeam.equals("team1")) {
@@ -226,63 +288,36 @@ public class StatsServlet extends HttpServlet {
         PreparedStatement stmt = null;
         try {
             conn = Database.getConnection();
-            StringBuilder updateQuery = new StringBuilder("UPDATE match_stats SET team1_balls = ?, " +
-                    "team2_balls = ?, current_batting = ?, is_completed = ?, winner = ?");
+            String query = "UPDATE match_stats SET current_batting = ?, is_completed = ?, winner = ? WHERE match_id = ?";
+            stmt = conn.prepareStatement(query);
+            stmt.setString(1, matchStats.get("current_batting"));
+            stmt.setString(2, matchStats.get("is_completed"));
+            stmt.setString(3, matchStats.get("winner"));
+            stmt.setInt(4, Integer.parseInt(matchId));
 
-            // Add player runs updates
+            stmt.executeUpdate();
+
+            query = "UPDATE team_stats SET player1_runs = ?, player1_wickets = ?, player2_runs = ?, player2_wickets = ?, " +
+                    "player3_runs = ?, player3_wickets = ?, player4_runs = ?, player4_wickets = ?, player5_runs = ?, " +
+                    "player5_wickets = ?, player6_runs = ?, player6_wickets = ?, player7_runs = ?, player7_wickets = ?, " +
+                    "player8_runs = ?, player8_wickets = ?, player9_runs = ?, player9_wickets = ?, player10_runs = ?, " +
+                    "player10_wickets = ?, player11_runs = ?, player11_wickets = ? , balls = ? WHERE team_id = ?";
+            stmt = conn.prepareStatement(query);
+
             for (int i = 1; i <= 11; i++) {
-                updateQuery.append(", team1_player").append(i).append("_runs = ?");
+                stmt.setInt(i * 2 - 1, team1_scores.get(i - 1));
+                stmt.setInt(i * 2, team1_wickets.get(i - 1));
             }
+            stmt.setInt(23, Integer.parseInt(matchStats.get("team1_balls")));
+            stmt.setInt(24, 1);
+            stmt.executeUpdate();
+
             for (int i = 1; i <= 11; i++) {
-                updateQuery.append(", team2_player").append(i).append("_runs = ?");
+                stmt.setInt(i * 2 - 1, team2_scores.get(i - 1));
+                stmt.setInt(i * 2, team2_wickets.get(i - 1));
             }
-
-            // Add player wickets updates
-            for (int i = 1; i <= 11; i++) {
-                updateQuery.append(", team1_player").append(i).append("_wickets = ?");
-            }
-            for (int i = 1; i <= 11; i++) {
-                updateQuery.append(", team2_player").append(i).append("_wickets = ?");
-            }
-
-            updateQuery.append(" WHERE match_id = ?");
-
-            stmt = conn.prepareStatement(updateQuery.toString());
-
-            int parameterIndex = 1;
-            stmt.setString(parameterIndex++, matchStats.get("team1_balls"));
-            stmt.setString(parameterIndex++, matchStats.get("team2_balls"));
-            stmt.setString(parameterIndex++, matchStats.get("current_batting"));
-            stmt.setString(parameterIndex++, matchStats.get("is_completed"));
-            stmt.setString(parameterIndex++, matchStats.get("winner"));
-
-            // Set player runs parameters
-            for (int score : team1_scores) {
-                stmt.setInt(parameterIndex++, score);
-            }
-            for (int score : team2_scores) {
-                stmt.setInt(parameterIndex++, score);
-            }
-
-            for (int wickets : team1_wickets) {
-                stmt.setInt(parameterIndex++, wickets);
-            }
-            for (int wickets : team2_wickets) {
-                stmt.setInt(parameterIndex++, wickets);
-            }
-
-            // Set player wickets parameters
-//            for (int i = 1; i <= 11; i++) {
-//                String wickets = matchStats.get("team1_player" + i + "_wickets");
-//                stmt.setInt(parameterIndex++, wickets != null ? Integer.parseInt(wickets) : 0);
-//            }
-//            for (int i = 1; i <= 11; i++) {
-//                String wickets = matchStats.get("team2_player" + i + "_wickets");
-//                stmt.setInt(parameterIndex++, wickets != null ? Integer.parseInt(wickets) : 0);
-//            }
-
-            stmt.setInt(parameterIndex, Integer.parseInt(matchId));
-
+            stmt.setInt(23, Integer.parseInt(matchStats.get("team2_balls")));
+            stmt.setInt(24, 2);
             stmt.executeUpdate();
         } catch (SQLException e) {
             System.out.println("Error updating match stats: " + e.getMessage());
@@ -319,7 +354,8 @@ public class StatsServlet extends HttpServlet {
             bowlerIndex = 1;
         }
 
-        String bowlerColumn = opponentTeam + "_player" + bowlerIndex + "_wickets";
+        String bowlerColumn = "ts" + (opponentTeam.equals("team1") ? "2" : "1") + ".player" + bowlerIndex + "_wickets";
+//        String bowlerColumn = opponentTeam + "_player" + bowlerIndex + "_wickets";
         int currentWickets = rs.getInt(bowlerColumn);
         matchStats.put(bowlerColumn, String.valueOf(currentWickets + 1));
 

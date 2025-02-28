@@ -11,7 +11,9 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @WebServlet("/api/total-score")
@@ -43,7 +45,9 @@ public class PlayerScoreServlet extends HttpServlet {
         try {
             conn = Database.getConnection();
 
-            stmt = conn.prepareStatement("SELECT * FROM teams WHERE id = ? AND (" + "player1 = ? OR player2 = ? OR player3 = ? OR player4 = ? OR player5 = ? OR " + "player6 = ? OR player7 = ? OR player8 = ? OR player9 = ? OR player10 = ? OR player11 = ?)");
+            stmt = conn.prepareStatement("SELECT * FROM teams WHERE id = ? AND (" +
+                    "player1 = ? OR player2 = ? OR player3 = ? OR player4 = ? OR player5 = ? OR " +
+                    "player6 = ? OR player7 = ? OR player8 = ? OR player9 = ? OR player10 = ? OR player11 = ?)");
 
             stmt.setString(1, teamId);
             for (int i = 2; i <= 12; i++) {
@@ -54,7 +58,7 @@ public class PlayerScoreServlet extends HttpServlet {
 
             if (!rs.next()) {
                 response.setStatus(404);
-                jsonResponse.put("message", "player not found");
+                jsonResponse.put("message", "Player not found");
                 try {
                     response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 } catch (IOException e) {
@@ -72,7 +76,7 @@ public class PlayerScoreServlet extends HttpServlet {
 
             if (playerIndex == -1) {
                 response.setStatus(404);
-                jsonResponse.put("message", "player not found in team");
+                jsonResponse.put("message", "Player not found in team");
                 try {
                     response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 } catch (IOException e) {
@@ -81,38 +85,52 @@ public class PlayerScoreServlet extends HttpServlet {
                 return;
             }
 
-            String query =
-                "SELECT SUM(CASE WHEN m.team1_id = ? THEN ms.team1_player" + playerIndex + "_runs ELSE ms.team2_player" + playerIndex + "_runs END) AS total_score, " +
-                "COUNT(CASE WHEN (m.team1_id = ? AND ms.team1_wickets >= " + (playerIndex-1) + ") OR " +
-                "(m.team2_id = ? AND ms.team2_wickets >= " + (playerIndex-1) + ") THEN 1 END) AS matches_played " +
-                "FROM matches m " +
-                "JOIN match_stats ms ON m.id = ms.match_id " +
-                "WHERE m.team1_id = ? OR m.team2_id = ?";
+            String matchQuery = "SELECT ms.*, ts1.*, ts2.* " +
+                "FROM match_stats ms " +
+                "JOIN team_stats ts1 ON ms.team1_stats_id = ts1.id " +
+                "JOIN team_stats ts2 ON ms.team2_stats_id = ts2.id " +
+                "WHERE ts1.team_id = ? OR ts2.team_id = ?";
 
-            stmt = conn.prepareStatement(query);
+            stmt = conn.prepareStatement(matchQuery);
             stmt.setString(1, teamId);
             stmt.setString(2, teamId);
-            stmt.setString(3, teamId);
-            stmt.setString(4, teamId);
-            stmt.setString(5, teamId);
             rs = stmt.executeQuery();
 
-            if (rs.next()) {
-                int totalScore = rs.getInt("total_score");
-                int matchesPlayed = rs.getInt("matches_played");
+            int totalScore = 0;
+            int matchesPlayed = 0;
 
-                if (matchesPlayed == 0) {
-                    response.setStatus(404);
-                    jsonResponse.put("message", player + " has not batted in any matches");
+            while (rs.next()) {
+                int team1StatsId = rs.getInt("ts1.id");
+                int teamId1 = rs.getInt("ts1.team_id");
+                int team2StatsId = rs.getInt("ts2.id");
+                int teamId2 = rs.getInt("ts2.team_id");
+
+                int playerRuns = 0;
+                int opponentWickets = 0;
+
+                if (teamId1 == Integer.parseInt(teamId)) {
+                    playerRuns = rs.getInt("ts1.player" + playerIndex + "_runs");
+                    opponentWickets = rs.getInt("ts2.total_wickets");
                 } else {
-                    jsonResponse.put("player", player);
-                    jsonResponse.put("team_id", teamId);
-                    jsonResponse.put("total_score", totalScore);
-                    jsonResponse.put("matches_played", matchesPlayed);
+                    playerRuns = rs.getInt("ts2.player" + playerIndex + "_runs");
+                    opponentWickets = rs.getInt("ts1.total_wickets");
                 }
-            } else {
+
+                totalScore += playerRuns;
+
+                if (playerIndex <= opponentWickets) {
+                    matchesPlayed++;
+                }
+            }
+
+            if (matchesPlayed == 0) {
                 response.setStatus(404);
                 jsonResponse.put("message", player + " has not batted in any matches");
+            } else {
+                jsonResponse.put("player", player);
+                jsonResponse.put("team_id", teamId);
+                jsonResponse.put("total_score", totalScore);
+                jsonResponse.put("matches_played", matchesPlayed);
             }
 
             try {

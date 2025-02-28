@@ -43,8 +43,8 @@
                 console.log(data);
                 // {"team1_balls":0,"team2_runs":[0,0,0,0,0,0,0,0,0,0,0],"winner":"none","team2_balls":0,"current_batting":"team1","team2_score":0,"team2_wickets":0,"team1_wickets":0,"team1_runs":[0,0,0,0,0,0,0,0,0,0,0],"is_completed":"false","team1_score":0}
                 // current_player score
-                document.getElementById("team1score").value = data.team1_runs[data.team1_wickets];
-                document.getElementById("team2score").value = data.team2_runs[data.team2_wickets];
+                document.getElementById("team1score").value = data.team1_runs[data.team2_wickets];
+                document.getElementById("team2score").value = data.team2_runs[data.team1_wickets];
                 document.getElementById("team1balls").value = data.team1_balls;
                 document.getElementById("team2balls").value = data.team2_balls;
 
@@ -113,7 +113,7 @@
                 playerRow1.appendChild(playerCell);
 
                 const runsCell = document.createElement("td");
-                if (data.team1_wickets >= i) {
+                if (data.team2_wickets >= i) {
                     runsCell.textContent = data.team1_runs[i] || 0;
                 } else {
                     runsCell.textContent = "-";
@@ -127,10 +127,14 @@
                 playerRow2.appendChild(playerCell);
 
                 const runsCell = document.createElement("td");
-                if (data.team2_wickets >= i) {
-                    runsCell.textContent = data.team2_runs[i] || 0;
-                } else {
+                if (current_batting === "team1") {
                     runsCell.textContent = "-";
+                } else {
+                    if (data.team1_wickets >= i) {
+                        runsCell.textContent = data.team2_runs[i] || 0;
+                    } else {
+                        runsCell.textContent = "-";
+                    }
                 }
                 runsRow2.appendChild(runsCell);
             }
