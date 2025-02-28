@@ -25,6 +25,7 @@ public class StatsListener {
         matchSessions.get(matchId).add(session.getId());
 
         String matchStats = fetchMatchStatsFromDatabase(matchId);
+        System.out.println("Sending stats: " + matchStats);
         try {
             session.getBasicRemote().sendText(matchStats);
         } catch (IOException e) {
@@ -106,39 +107,72 @@ public class StatsListener {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         /*
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                match_id INTEGER NOT NULL,
-                team1_player1_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player2_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player3_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player4_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player5_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player6_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player7_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player8_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player9_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player10_runs INTEGER NOT NULL DEFAULT 0,
-                team1_player11_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player1_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player2_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player3_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player4_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player5_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player6_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player7_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player8_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player9_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player10_runs INTEGER NOT NULL DEFAULT 0,
-                team2_player11_runs INTEGER NOT NULL DEFAULT 0,
-                team1_wickets INTEGER NOT NULL DEFAULT 0,
-                team2_wickets INTEGER NOT NULL DEFAULT 0,
-                team1_balls INTEGER NOT NULL DEFAULT 0,
-                team2_balls INTEGER NOT NULL DEFAULT 0,
-                current_batting TEXT NOT NULL CHECK(current_batting IN ('team1', 'team2')) DEFAULT 'team1',
-                is_completed TEXT NOT NULL CHECK(is_completed IN ('true', 'false')) DEFAULT 'false',
-                winner TEXT NOT NULL CHECK(winner IN ('team1', 'team2', 'none', 'tie')) DEFAULT 'none',
-
-                team1_score and team2_score are not needed in database storing
+                CREATE TABLE match_stats (
+                     id INT AUTO_INCREMENT PRIMARY KEY,
+                     match_id INT NOT NULL,
+                     team1_player1_runs INT DEFAULT NULL,
+                     team1_player2_runs INT DEFAULT 0,
+                     team1_player3_runs INT DEFAULT 0,
+                     team1_player4_runs INT DEFAULT 0,
+                     team1_player5_runs INT DEFAULT 0,
+                     team1_player6_runs INT DEFAULT 0,
+                     team1_player7_runs INT DEFAULT 0,
+                     team1_player8_runs INT DEFAULT 0,
+                     team1_player9_runs INT DEFAULT 0,
+                     team1_player10_runs INT DEFAULT 0,
+                     team1_player11_runs INT DEFAULT 0,
+                     team2_player1_runs INT DEFAULT 0,
+                     team2_player2_runs INT DEFAULT 0,
+                     team2_player3_runs INT DEFAULT 0,
+                     team2_player4_runs INT DEFAULT 0,
+                     team2_player5_runs INT DEFAULT 0,
+                     team2_player6_runs INT DEFAULT 0,
+                     team2_player7_runs INT DEFAULT 0,
+                     team2_player8_runs INT DEFAULT 0,
+                     team2_player9_runs INT DEFAULT 0,
+                     team2_player10_runs INT DEFAULT 0,
+                     team2_player11_runs INT DEFAULT 0,
+                     team1_player1_wickets INT DEFAULT 0,
+                     team1_player2_wickets INT DEFAULT 0,
+                     team1_player3_wickets INT DEFAULT 0,
+                     team1_player4_wickets INT DEFAULT 0,
+                     team1_player5_wickets INT DEFAULT 0,
+                     team1_player6_wickets INT DEFAULT 0,
+                     team1_player7_wickets INT DEFAULT 0,
+                     team1_player8_wickets INT DEFAULT 0,
+                     team1_player9_wickets INT DEFAULT 0,
+                     team1_player10_wickets INT DEFAULT 0,
+                     team1_player11_wickets INT DEFAULT 0,
+                     team2_player1_wickets INT DEFAULT 0,
+                     team2_player2_wickets INT DEFAULT 0,
+                     team2_player3_wickets INT DEFAULT 0,
+                     team2_player4_wickets INT DEFAULT 0,
+                     team2_player5_wickets INT DEFAULT 0,
+                     team2_player6_wickets INT DEFAULT 0,
+                     team2_player7_wickets INT DEFAULT 0,
+                     team2_player8_wickets INT DEFAULT 0,
+                     team2_player9_wickets INT DEFAULT 0,
+                     team2_player10_wickets INT DEFAULT 0,
+                     team2_player11_wickets INT DEFAULT 0,
+                     team1_balls INT DEFAULT 0 NOT NULL,
+                     team2_balls INT DEFAULT 0 NOT NULL,
+                     current_batting ENUM('team1', 'team2') NOT NULL DEFAULT 'team1',
+                     is_completed ENUM('true', 'false') NOT NULL DEFAULT 'false',
+                     winner ENUM('team1', 'team2', 'none', 'tie') NOT NULL DEFAULT 'none',
+                     team1_wickets INT GENERATED ALWAYS AS (
+                         team2_player1_wickets + team2_player2_wickets + team2_player3_wickets +
+                         team2_player4_wickets + team2_player5_wickets + team2_player6_wickets +
+                         team2_player7_wickets + team2_player8_wickets + team2_player9_wickets +
+                         team2_player10_wickets + team2_player11_wickets
+                         ) VIRTUAL,
+                     team2_wickets INT GENERATED ALWAYS AS (
+                         team1_player1_wickets + team1_player2_wickets + team1_player3_wickets +
+                         team1_player4_wickets + team1_player5_wickets + team1_player6_wickets +
+                         team1_player7_wickets + team1_player8_wickets + team1_player9_wickets +
+                         team1_player10_wickets + team1_player11_wickets
+                         ) VIRTUAL,
+                     FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE
+                );
              */
         try {
             conn = Database.getConnection();
@@ -149,49 +183,27 @@ public class StatsListener {
             List<Integer> team1Runs = new ArrayList<>();
             List<Integer> team2Runs = new ArrayList<>();
 
-            for (int i = 1; i <= 11; i++) {
-                team1Runs.add(rs.getInt("team1_player" + i + "_runs"));
-                team2Runs.add(rs.getInt("team2_player" + i + "_runs"));
-            }
-
-            int current_player = rs.getInt("team1_wickets") + 1;
-            if (rs.getString("current_batting").equals("team2")) {
-                current_player = rs.getInt("team2_wickets") + 1;
-            }
+//
+//            int current_player = rs.getInt("team1_wickets") + 1;
+//            if (rs.getString("current_batting").equals("team2")) {
+//                current_player = rs.getInt("team2_wickets") + 1;
+//            }
 
             if (rs.next()) {
+                for (int i = 1; i <= 11; i++) {
+                    team1Runs.add(rs.getInt("team1_player" + i + "_runs"));
+                    team2Runs.add(rs.getInt("team2_player" + i + "_runs"));
+                }
                 matchStats.put("team1_score", team1Runs.stream().mapToInt(Integer::intValue).sum());
                 matchStats.put("team2_score", team2Runs.stream().mapToInt(Integer::intValue).sum());
                 matchStats.put("team1_wickets", rs.getInt("team1_wickets"));
                 matchStats.put("team2_wickets", rs.getInt("team2_wickets"));
                 matchStats.put("team1_balls", rs.getInt("team1_balls"));
                 matchStats.put("team2_balls", rs.getInt("team2_balls"));
-                matchStats.put("team1_runs", new ArrayList<>(Arrays.asList(
-                        rs.getInt("team1_player1_runs"),
-                        rs.getInt("team1_player2_runs"),
-                        rs.getInt("team1_player3_runs"),
-                        rs.getInt("team1_player4_runs"),
-                        rs.getInt("team1_player5_runs"),
-                        rs.getInt("team1_player6_runs"),
-                        rs.getInt("team1_player7_runs"),
-                        rs.getInt("team1_player8_runs"),
-                        rs.getInt("team1_player9_runs"),
-                        rs.getInt("team1_player10_runs"),
-                        rs.getInt("team1_player11_runs")
-                )));
-                matchStats.put("team2_runs", new ArrayList<>(Arrays.asList(
-                        rs.getInt("team2_player1_runs"),
-                        rs.getInt("team2_player2_runs"),
-                        rs.getInt("team2_player3_runs"),
-                        rs.getInt("team2_player4_runs"),
-                        rs.getInt("team2_player5_runs"),
-                        rs.getInt("team2_player6_runs"),
-                        rs.getInt("team2_player7_runs"),
-                        rs.getInt("team2_player8_runs"),
-                        rs.getInt("team2_player9_runs"),
-                        rs.getInt("team2_player10_runs"),
-                        rs.getInt("team2_player11_runs")
-                )));
+                matchStats.put("team1_runs", new ArrayList<>(Arrays.asList(rs.getInt("team1_player1_runs"), rs.getInt("team1_player2_runs"), rs.getInt("team1_player3_runs"), rs.getInt("team1_player4_runs"), rs.getInt("team1_player5_runs"), rs.getInt("team1_player6_runs"), rs.getInt("team1_player7_runs"), rs.getInt("team1_player8_runs"), rs.getInt("team1_player9_runs"), rs.getInt("team1_player10_runs"), rs.getInt("team1_player11_runs"))));
+                matchStats.put("team2_runs", new ArrayList<>(Arrays.asList(rs.getInt("team2_player1_runs"), rs.getInt("team2_player2_runs"), rs.getInt("team2_player3_runs"), rs.getInt("team2_player4_runs"), rs.getInt("team2_player5_runs"), rs.getInt("team2_player6_runs"), rs.getInt("team2_player7_runs"), rs.getInt("team2_player8_runs"), rs.getInt("team2_player9_runs"), rs.getInt("team2_player10_runs"), rs.getInt("team2_player11_runs"))));
+                matchStats.put("team1_outs", new ArrayList<>(Arrays.asList(rs.getInt("team1_player1_wickets"), rs.getInt("team1_player2_wickets"), rs.getInt("team1_player3_wickets"), rs.getInt("team1_player4_wickets"), rs.getInt("team1_player5_wickets"), rs.getInt("team1_player6_wickets"), rs.getInt("team1_player7_wickets"), rs.getInt("team1_player8_wickets"), rs.getInt("team1_player9_wickets"), rs.getInt("team1_player10_wickets"), rs.getInt("team1_player11_wickets"))));
+                matchStats.put("team2_outs", new ArrayList<>(Arrays.asList(rs.getInt("team2_player1_wickets"), rs.getInt("team2_player2_wickets"), rs.getInt("team2_player3_wickets"), rs.getInt("team2_player4_wickets"), rs.getInt("team2_player5_wickets"), rs.getInt("team2_player6_wickets"), rs.getInt("team2_player7_wickets"), rs.getInt("team2_player8_wickets"), rs.getInt("team2_player9_wickets"), rs.getInt("team2_player10_wickets"), rs.getInt("team2_player11_wickets"))));
                 matchStats.put("current_batting", rs.getString("current_batting"));
                 matchStats.put("is_completed", rs.getString("is_completed"));
                 matchStats.put("winner", rs.getString("winner"));

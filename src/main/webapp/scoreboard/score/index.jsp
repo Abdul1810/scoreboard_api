@@ -95,13 +95,17 @@
         function updateScoreTable(data) {
             const playerRow1 = document.getElementById("playerRow1");
             const runsRow1 = document.getElementById("runsRow1");
+            const outRow1 = document.getElementById("outRow1");
             const playerRow2 = document.getElementById("playerRow2");
             const runsRow2 = document.getElementById("runsRow2");
+            const outRow2 = document.getElementById("outRow2");
 
             playerRow1.innerHTML = "<th>Players</th>";
             runsRow1.innerHTML = "<td>Runs</td>";
+            outRow1.innerHTML = "<td>Wickets</td>";
             playerRow2.innerHTML = "<th>Players</th>";
             runsRow2.innerHTML = "<td>Runs</td>";
+            outRow2.innerHTML = "<td>Wickets</td>";
 
             for (let i = 0; i < team1Players.length; i++) {
                 const playerCell = document.createElement("th");
@@ -129,6 +133,26 @@
                     runsCell.textContent = "-";
                 }
                 runsRow2.appendChild(runsCell);
+            }
+
+            for (let i = 0; i < data.team2_outs.length; i++) {
+                if (data.team2_outs[i] !== 0) {
+                    for (let j = 0; j < data.team2_outs[i]; j++) {
+                        const outCell = document.createElement("td");
+                        outCell.textContent = team2Players[i];
+                        outRow1.appendChild(outCell);
+                    }
+                }
+            }
+
+            for (let i = 0; i < data.team1_outs.length; i++) {
+                if (data.team1_outs[i] !== 0) {
+                    for (let j = 0; j < data.team1_outs[i]; j++) {
+                        const outCell = document.createElement("td");
+                        outCell.textContent = team1Players[i];
+                        outRow2.appendChild(outCell);
+                    }
+                }
             }
         }
     </script>
@@ -250,7 +274,7 @@
 </div>
 <br>
 
-<h3>Team1 Scoretable</h3>
+<h3>Team1 Score-table</h3>
 <table border="1" style="width: 80%; margin: auto; border-collapse: collapse;">
     <thead>
     <tr id="playerRow1">
@@ -261,10 +285,13 @@
     <tr id="runsRow1">
         <td>Runs</td>
     </tr>
+    <tr id="outRow1">
+        <td>Wickets</td>
+    </tr>
     </tbody>
 </table>
 
-<h3>Team2 Scoretable</h3>
+<h3>Team2 Score-table</h3>
 <table border="1" style="width: 80%; margin: auto; border-collapse: collapse;">
     <thead>
     <tr id="playerRow2">
@@ -274,6 +301,9 @@
     <tbody>
     <tr id="runsRow2">
         <td>Runs</td>
+    </tr>
+    <tr id="outRow2">
+        <td>Wickets</td>
     </tr>
     </tbody>
 </table>

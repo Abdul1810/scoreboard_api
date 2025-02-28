@@ -6,12 +6,14 @@ import java.sql.SQLException;
 
 public class Database {
     private static Connection conn;
-    private static final String DATABASE_URL = "jdbc:sqlite:C:\\Users\\ACER\\Downloads\\db.sqlite";
+    private static final String DATABASE_URL = "jdbc:mysql://localhost:3306/scoreboard";
+    private static final String DATABASE_USER = "root";
+    private static final String DATABASE_PASSWORD = "";
 
     private static void initDatabase() {
         try {
-            Class.forName("org.sqlite.JDBC");
-            conn = DriverManager.getConnection(DATABASE_URL);
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            conn = DriverManager.getConnection(DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD);
         } catch (ClassNotFoundException | SQLException e) {
             System.out.println("Error: " + e.getMessage());
         }
@@ -32,7 +34,7 @@ public class Database {
         try {
             if (conn != null && !conn.isClosed()) {
                 conn.close();
-                System.out.println("SQLite connection closed.");
+                System.out.println("MySQL connection closed.");
             }
         } catch (SQLException e) {
             System.out.println("Error: " + e.getMessage());
