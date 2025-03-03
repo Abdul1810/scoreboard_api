@@ -10,10 +10,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.sql.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @WebServlet("/api/teams")
 public class TeamServlet extends HttpServlet {
@@ -52,7 +51,7 @@ public class TeamServlet extends HttpServlet {
         for (int i = 0; i < 11; i++) {
             if (players.get(i) == null || players.get(i).trim().isEmpty()) {
                 response.setStatus(400);
-                jsonResponse.put("message", "Invalid player name in " + i);
+                jsonResponse.put("message", "Invalid player name at index " + i);
                 response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 return;
             }
@@ -90,27 +89,63 @@ public class TeamServlet extends HttpServlet {
             }
         }
 
-        PreparedStatement insertStmt = null;
+        PreparedStatement insertPlayerStmt = null;
+        PreparedStatement insertTeamStmt = null;
+        PreparedStatement updatePlayerStmt = null;
+        ResultSet generatedKeys = null;
+
         try {
-            String insertQuery = "INSERT INTO teams (name, player1, player2, player3, player4, player5, player6, player7, player8, player9, player10, player11) VALUES " + "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            insertStmt = conn.prepareStatement(insertQuery);
-            insertStmt.setString(1, name.get());
-            for (int i = 0; i < 11; i++) {
-                insertStmt.setString(i + 2, players.get(i));
+            // Insert into players table and collect their IDs
+            String insertPlayerQuery = "INSERT INTO players (name) VALUES (?)";
+            insertPlayerStmt = conn.prepareStatement(insertPlayerQuery, Statement.RETURN_GENERATED_KEYS);
+
+            List<Integer> playerIds = new ArrayList<>();
+            for (String playerName : players) {
+                insertPlayerStmt.setString(1, playerName);
+                insertPlayerStmt.addBatch();
             }
-            insertStmt.executeUpdate();
+            insertPlayerStmt.executeBatch();
+
+            // Retrieve generated player IDs
+            generatedKeys = insertPlayerStmt.getGeneratedKeys();
+            while (generatedKeys.next()) {
+                playerIds.add(generatedKeys.getInt(1));
+            }
+
+            // Insert into teams table using the collected player IDs
+            String insertTeamQuery = "INSERT INTO teams (name, player1_id, player2_id, player3_id, player4_id, player5_id, player6_id, player7_id, player8_id, player9_id, player10_id, player11_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            insertTeamStmt = conn.prepareStatement(insertTeamQuery, Statement.RETURN_GENERATED_KEYS);
+            insertTeamStmt.setString(1, name.get());
+            for (int i = 0; i < 11; i++) {
+                insertTeamStmt.setInt(i + 2, playerIds.get(i));
+            }
+            insertTeamStmt.executeUpdate();
+
+            // Update the team_id for the players
+            int teamId = 0;
+            generatedKeys = insertTeamStmt.getGeneratedKeys();
+            if (generatedKeys.next()) {
+                teamId = generatedKeys.getInt(1);
+            }
+
+            String updatePlayersQuery = "UPDATE players SET team_id = ? WHERE id IN (" +
+                    playerIds.stream().map(String::valueOf).collect(Collectors.joining(",")) + ")";
+            updatePlayerStmt = conn.prepareStatement(updatePlayersQuery);
+            updatePlayerStmt.setInt(1, teamId);
+            updatePlayerStmt.executeUpdate();
 
             jsonResponse.put("message", "Team created successfully");
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-        } catch (Exception e) {
+        } catch (SQLException e) {
             jsonResponse.put("message", "Database error: " + e.getMessage());
             response.setStatus(500);
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } finally {
             try {
-                if (insertStmt != null) insertStmt.close();
-                if (conn != null) conn.close();
-            } catch (Exception e) {
+                if (generatedKeys != null) generatedKeys.close();
+                if (insertPlayerStmt != null) insertPlayerStmt.close();
+                if (insertTeamStmt != null) insertTeamStmt.close();
+            } catch (SQLException e) {
                 System.err.println("Error closing resources: " + e.getMessage());
             }
         }
@@ -123,74 +158,81 @@ public class TeamServlet extends HttpServlet {
         PreparedStatement stmt = null;
         ResultSet rs = null;
 
-        if (matchId == null) {
+        try {
+            conn = Database.getConnection();
 
-            try {
-                conn = Database.getConnection();
-
-                String query = "SELECT * FROM teams";
+            if (matchId == null) {
+                // Fetch all teams
+                String query = "SELECT t.id, t.name FROM teams t";
                 stmt = conn.prepareStatement(query);
                 rs = stmt.executeQuery();
 
                 List<Map<String, Object>> teams = new ArrayList<>();
                 while (rs.next()) {
                     Map<String, Object> team = new HashMap<>();
-                    team.put("id", rs.getInt("id"));
+                    int teamId = rs.getInt("id");
+                    team.put("id", teamId);
                     team.put("name", rs.getString("name"));
-                    team.put("players", new ArrayList<>());
-                    for (int i = 1; i <= 11; i++) {
-                        ((List<String>) team.get("players")).add(rs.getString("player" + i));
+
+                    // Fetch players for the team
+                    String playerQuery = "SELECT name FROM players WHERE team_id = ?";
+                    try (PreparedStatement playerStmt = conn.prepareStatement(playerQuery)) {
+                        playerStmt.setInt(1, teamId);
+                        ResultSet playerRs = playerStmt.executeQuery();
+                        List<String> players = new ArrayList<>();
+                        while (playerRs.next()) {
+                            players.add(playerRs.getString("name"));
+                        }
+                        team.put("players", players);
                     }
+
                     teams.add(team);
                 }
 
                 response.getWriter().write(objectMapper.writeValueAsString(teams));
-            } catch (Exception e) {
-                jsonResponse.put("message", "Database error: " + e.getMessage());
-                response.setStatus(500);
-                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-            } finally {
-                try {
-                    if (rs != null) rs.close();
-                    if (stmt != null) stmt.close();
-                } catch (Exception e) {
-                    System.err.println("Error closing resources: " + e.getMessage());
-                }
-            }
-        } else {
-            try {
-                conn = Database.getConnection();
-
-                String query = "SELECT * FROM teams WHERE id = ?";
+            } else {
+                // Fetch a specific team
+                String query = "SELECT t.id, t.name FROM teams t WHERE t.id = ?";
                 stmt = conn.prepareStatement(query);
                 stmt.setInt(1, Integer.parseInt(matchId));
                 rs = stmt.executeQuery();
 
                 if (rs.next()) {
                     Map<String, Object> team = new HashMap<>();
-                    team.put("id", rs.getInt("id"));
+                    int teamId = rs.getInt("id");
+                    team.put("id", teamId);
                     team.put("name", rs.getString("name"));
-                    team.put("players", new ArrayList<>());
-                    for (int i = 1; i <= 11; i++) {
-                        ((List<String>) team.get("players")).add(rs.getString("player" + i));
+
+                    // Fetch players for the team
+                    String playerQuery = "SELECT name FROM players WHERE team_id = ?";
+                    try (PreparedStatement playerStmt = conn.prepareStatement(playerQuery)) {
+                        playerStmt.setInt(1, teamId);
+                        ResultSet playerRs = playerStmt.executeQuery();
+                        List<String> players = new ArrayList<>();
+                        while (playerRs.next()) {
+                            players.add(playerRs.getString("name"));
+                        }
+                        team.put("players", players);
                     }
+
                     response.getWriter().write(objectMapper.writeValueAsString(team));
                 } else {
                     jsonResponse.put("message", "Team not found");
                     response.setStatus(404);
                     response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 }
+            }
+        } catch (Exception e) {
+            jsonResponse.put("message", "Database error: " + e.getMessage());
+            response.setStatus(500);
+            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (stmt != null) stmt.close();
+                if (conn != null) conn.close();
             } catch (Exception e) {
-                jsonResponse.put("message", "Database error: " + e.getMessage());
-                response.setStatus(500);
-                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-            } finally {
-                try {
-                    if (rs != null) rs.close();
-                    if (stmt != null) stmt.close();
-                } catch (Exception e) {
-                    System.err.println("Error closing resources: " + e.getMessage());
-                }
+                System.err.println("Error closing resources: " + e.getMessage());
             }
         }
     }
@@ -207,35 +249,45 @@ public class TeamServlet extends HttpServlet {
 
         Connection conn = null;
         PreparedStatement stmt = null;
+        ResultSet rs = null;
 
         try {
             conn = Database.getConnection();
 
-            String query = "DELETE FROM teams WHERE id = ?";
-            stmt = conn.prepareStatement(query);
+            // Delete players associated with the team
+            String deletePlayersQuery = "DELETE FROM players WHERE team_id = ?";
+            stmt = conn.prepareStatement(deletePlayersQuery);
             stmt.setInt(1, Integer.parseInt(id));
             stmt.executeUpdate();
 
+            // Delete the team
+            String deleteTeamQuery = "DELETE FROM teams WHERE id = ?";
+            stmt = conn.prepareStatement(deleteTeamQuery);
+            stmt.setInt(1, Integer.parseInt(id));
+            stmt.executeUpdate();
+
+            // Fetch and delete related matches
             List<Integer> matchIds = new ArrayList<>();
-            query = "SELECT id FROM matches WHERE team1_id = ? OR team2_id = ?";
-            stmt = conn.prepareStatement(query);
+            String fetchMatchesQuery = "SELECT id FROM matches WHERE team1_id = ? OR team2_id = ?";
+            stmt = conn.prepareStatement(fetchMatchesQuery);
             stmt.setInt(1, Integer.parseInt(id));
             stmt.setInt(2, Integer.parseInt(id));
-            ResultSet rs = stmt.executeQuery();
+            rs = stmt.executeQuery();
 
             while (rs.next()) {
                 matchIds.add(rs.getInt("id"));
             }
 
-            query = "DELETE FROM matches WHERE team1_id = ? OR team2_id = ?";
-            stmt = conn.prepareStatement(query);
+            String deleteMatchesQuery = "DELETE FROM matches WHERE team1_id = ? OR team2_id = ?";
+            stmt = conn.prepareStatement(deleteMatchesQuery);
             stmt.setInt(1, Integer.parseInt(id));
             stmt.setInt(2, Integer.parseInt(id));
             stmt.executeUpdate();
 
-            query = "DELETE FROM match_stats WHERE match_id = ?";
+            // Delete player stats associated with the matches
+            String deletePlayerStatsQuery = "DELETE FROM player_stats WHERE match_id = ?";
             for (int matchId : matchIds) {
-                stmt = conn.prepareStatement(query);
+                stmt = conn.prepareStatement(deletePlayerStatsQuery);
                 stmt.setInt(1, matchId);
                 stmt.executeUpdate();
             }
@@ -252,6 +304,7 @@ public class TeamServlet extends HttpServlet {
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } finally {
             try {
+                if (rs != null) rs.close();
                 if (stmt != null) stmt.close();
                 if (conn != null) conn.close();
             } catch (Exception e) {

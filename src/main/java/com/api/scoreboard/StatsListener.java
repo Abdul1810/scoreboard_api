@@ -18,21 +18,21 @@ public class StatsListener {
     private static final Map<String, CopyOnWriteArrayList<String>> matchSessions = new HashMap<>();
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    public static void addSession(String matchId, Session session) {
-        System.out.println("Adding session: " + session.getId());
-        System.out.println("For match: " + matchId);
-        sessions.put(session.getId(), session);
-        matchSessions.putIfAbsent(matchId, new CopyOnWriteArrayList<>());
-        matchSessions.get(matchId).add(session.getId());
-
-        String matchStats = fetchMatchStatsFromDatabase(matchId);
-        System.out.println("Sending stats: " + matchStats);
-        try {
-            session.getBasicRemote().sendText(matchStats);
-        } catch (IOException e) {
-            System.out.println("Error sending stats: " + e.getMessage());
-        }
-    }
+//    public static void addSession(String matchId, Session session) {
+//        System.out.println("Adding session: " + session.getId());
+//        System.out.println("For match: " + matchId);
+//        sessions.put(session.getId(), session);
+//        matchSessions.putIfAbsent(matchId, new CopyOnWriteArrayList<>());
+//        matchSessions.get(matchId).add(session.getId());
+//
+//        String matchStats = fetchMatchStatsFromDatabase(matchId);
+//        System.out.println("Sending stats: " + matchStats);
+//        try {
+//            session.getBasicRemote().sendText(matchStats);
+//        } catch (IOException e) {
+//            System.out.println("Error sending stats: " + e.getMessage());
+//        }
+//    }
 
     public static void removeSession(String matchId, Session session) {
         sessions.remove(session.getId());
@@ -89,6 +89,22 @@ public class StatsListener {
         matchSessions.put(matchId, new CopyOnWriteArrayList<>());
     }
 
+    public static void addSession(String matchId, Session session) {
+        System.out.println("Adding session: " + session.getId());
+        System.out.println("For match: " + matchId);
+        sessions.put(session.getId(), session);
+        matchSessions.putIfAbsent(matchId, new CopyOnWriteArrayList<>());
+        matchSessions.get(matchId).add(session.getId());
+
+        String matchStats = fetchMatchStatsFromDatabase(matchId);
+        System.out.println("Sending stats: " + matchStats);
+        try {
+            session.getBasicRemote().sendText(matchStats);
+        } catch (IOException e) {
+            System.out.println("Error sending stats: " + e.getMessage());
+        }
+    }
+
     private static String fetchMatchStatsFromDatabase(String matchId) {
         Map<String, Object> matchStats = new HashMap<>();
         Connection conn = null;
@@ -97,34 +113,62 @@ public class StatsListener {
 
         try {
             conn = Database.getConnection();
-            String query = "SELECT ms.*, ts1.*, ts2.* " +
-                    "FROM match_stats ms " +
-                    "JOIN team_stats ts1 ON ms.team1_stats_id = ts1.id " +
-                    "JOIN team_stats ts2 ON ms.team2_stats_id = ts2.id " +
-                    "WHERE ms.match_id = ?";
+            String query = "SELECT * FROM matches WHERE id = ?";
             stmt = conn.prepareStatement(query);
             stmt.setString(1, matchId);
             rs = stmt.executeQuery();
 
             if (rs.next()) {
-                List<Integer> team1Runs = fetchPlayerScores(rs, "ts1");
-                List<Integer> team2Runs = fetchPlayerScores(rs, "ts2");
-                List<Integer> team1Wickets = fetchPlayerWickets(rs, "ts1");
-                List<Integer> team2Wickets = fetchPlayerWickets(rs, "ts2");
+                int team1Id = rs.getInt("team1_id");
+                int team2Id = rs.getInt("team2_id");
 
-                matchStats.put("team1_score", rs.getInt("ts1.total_score"));
-                matchStats.put("team2_score", rs.getInt("ts2.total_score"));
-                matchStats.put("team1_wickets", rs.getInt("ts1.total_wickets"));
-                matchStats.put("team2_wickets", rs.getInt("ts2.total_wickets"));
-                matchStats.put("team1_balls", rs.getInt("ts1.balls"));
-                matchStats.put("team2_balls", rs.getInt("ts2.balls"));
+                matchStats.put("current_batting", rs.getString("current_batting"));
+                matchStats.put("is_completed", rs.getString("is_completed"));
+                matchStats.put("winner", rs.getString("winner"));
+                matchStats.put("team1_balls", rs.getInt("team1_balls"));
+                matchStats.put("team2_balls", rs.getInt("team2_balls"));
+                matchStats.put("team1_wickets_map", objectMapper.readValue(rs.getString("team1_wickets_map"), List.class));
+                matchStats.put("team2_wickets_map", objectMapper.readValue(rs.getString("team2_wickets_map"), List.class));
+
+                // Fetch player stats for both teams
+                query = "SELECT ps.player_id, ps.runs, ps.wickets, ps.team_id " +
+                        "FROM player_stats ps " +
+                        "JOIN players p ON ps.player_id = p.id " +
+                        "WHERE ps.match_id = ? AND ps.team_id IN (?, ?)";
+                stmt = conn.prepareStatement(query);
+                stmt.setString(1, matchId);
+                stmt.setInt(2, team1Id);
+                stmt.setInt(3, team2Id);
+                rs = stmt.executeQuery();
+
+                Map<Integer, Integer> team1Runs = new HashMap<>();
+                Map<Integer, Integer> team2Runs = new HashMap<>();
+                Map<Integer, Integer> team1Wickets = new HashMap<>();
+                Map<Integer, Integer> team2Wickets = new HashMap<>();
+
+                while (rs.next()) {
+                    int playerId = rs.getInt("player_id");
+                    int runs = rs.getInt("runs");
+                    int wickets = rs.getInt("wickets");
+                    int teamId = rs.getInt("team_id");
+
+                    if (teamId == team1Id) {
+                        team1Runs.put(playerId, runs);
+                        team1Wickets.put(playerId, wickets);
+                    } else if (teamId == team2Id) {
+                        team2Runs.put(playerId, runs);
+                        team2Wickets.put(playerId, wickets);
+                    }
+                }
+
+                matchStats.put("team1_score", team1Runs.values().stream().mapToInt(Integer::intValue).sum());
+                matchStats.put("team2_score", team2Runs.values().stream().mapToInt(Integer::intValue).sum());
+                matchStats.put("team1_wickets", team1Wickets.values().stream().mapToInt(Integer::intValue).sum());
+                matchStats.put("team2_wickets", team2Wickets.values().stream().mapToInt(Integer::intValue).sum());
                 matchStats.put("team1_runs", team1Runs);
                 matchStats.put("team2_runs", team2Runs);
                 matchStats.put("team1_outs", team1Wickets);
                 matchStats.put("team2_outs", team2Wickets);
-                matchStats.put("current_batting", rs.getString("ms.current_batting"));
-                matchStats.put("is_completed", rs.getString("ms.is_completed"));
-                matchStats.put("winner", rs.getString("ms.winner"));
             }
         } catch (Exception e) {
             System.out.println("Error fetching match stats: " + e.getMessage());
@@ -144,21 +188,5 @@ public class StatsListener {
             System.out.println("Error converting to JSON: " + e.getMessage());
             return "{}";
         }
-    }
-
-    private static List<Integer> fetchPlayerScores(ResultSet rs, String tableAlias) throws SQLException {
-        List<Integer> scores = new ArrayList<>();
-        for (int i = 1; i <= 11; i++) {
-            scores.add(rs.getInt(tableAlias + ".player" + i + "_runs"));
-        }
-        return scores;
-    }
-
-    private static List<Integer> fetchPlayerWickets(ResultSet rs, String tableAlias) throws SQLException {
-        List<Integer> wickets = new ArrayList<>();
-        for (int i = 1; i <= 11; i++) {
-            wickets.add(rs.getInt(tableAlias + ".player" + i + "_wickets"));
-        }
-        return wickets;
     }
 }

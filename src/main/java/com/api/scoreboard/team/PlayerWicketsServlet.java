@@ -39,7 +39,20 @@ public class PlayerWicketsServlet extends HttpServlet {
 
         try {
             conn = Database.getConnection();
-            int playerIndex = getPlayerIndex(conn, teamId, player);
+            int playerId = getPlayerId(conn, teamId, player);
+
+            if (playerId == -1) {
+                jsonResponse.put("message", "Player not found in team");
+                response.setStatus(404);
+                try {
+                    response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+                } catch (IOException e) {
+                    System.out.println("Error writing response: " + e.getMessage());
+                }
+                return;
+            }
+
+            int playerIndex = getPlayerIndex(conn, teamId, playerId);
 
             if (playerIndex == -1) {
                 jsonResponse.put("message", "Player not found in team");
@@ -52,7 +65,7 @@ public class PlayerWicketsServlet extends HttpServlet {
                 return;
             }
 
-            fetchPlayerWicketsData(conn, jsonResponse, teamId, playerIndex, player);
+            fetchPlayerWicketsData(conn, jsonResponse, teamId, playerId, player, playerIndex);
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } catch (Exception e) {
             jsonResponse.put("message", "Database error: " + e.getMessage());
@@ -73,20 +86,17 @@ public class PlayerWicketsServlet extends HttpServlet {
         }
     }
 
-    private int getPlayerIndex(Connection conn, String teamId, String player) throws Exception {
+    private int getPlayerId(Connection conn, String teamId, String player) throws Exception {
         PreparedStatement stmt = null;
         ResultSet rs = null;
-        String query = "SELECT * FROM teams WHERE id = ?";
+        String query = "SELECT id FROM players WHERE name = ? AND team_id = ?";
         try {
             stmt = conn.prepareStatement(query);
-            stmt.setString(1, teamId);
+            stmt.setString(1, player);
+            stmt.setString(2, teamId);
             rs = stmt.executeQuery();
             if (rs.next()) {
-                for (int i = 1; i <= 11; i++) {
-                    if (player.equals(rs.getString("player" + i))) {
-                        return i;
-                    }
-                }
+                return rs.getInt("id");
             }
         } finally {
             if (rs != null) {
@@ -99,20 +109,25 @@ public class PlayerWicketsServlet extends HttpServlet {
         return -1;
     }
 
-    private void fetchPlayerWicketsData(Connection conn, Map<String, Object> jsonResponse, String teamId, int playerIndex, String player) throws Exception {
+    private void fetchPlayerWicketsData(Connection conn, Map<String, Object> jsonResponse, String teamId, int playerId, String player, int playerIndex) throws Exception {
         PreparedStatement stmt = null;
         ResultSet rs = null;
 
-        String query = "SELECT ms.*, ts1.*, ts2.* " +
-                "FROM match_stats ms " +
-                "JOIN team_stats ts1 ON ms.team1_stats_id = ts1.id " +
-                "JOIN team_stats ts2 ON ms.team2_stats_id = ts2.id " +
-                "WHERE ts1.team_id = ? OR ts2.team_id = ?";
+        String query = "SELECT ps.wickets, " +
+                "CASE " +
+                "    WHEN m.team1_id = ? THEN m.team2_balls " +
+                "    ELSE m.team1_balls " +
+                "END AS balls " +
+                "FROM player_stats ps " +
+                "JOIN matches m ON ps.match_id = m.id " +
+                "WHERE ps.player_id = ? AND (m.team1_id = ? OR m.team2_id = ?)";
 
         try {
             stmt = conn.prepareStatement(query);
-            stmt.setString(1, teamId);
-            stmt.setString(2, teamId);
+            stmt.setInt(1, Integer.parseInt(teamId));
+            stmt.setInt(2, playerId);
+            stmt.setString(3, teamId);
+            stmt.setString(4, teamId);
             rs = stmt.executeQuery();
 
             int totalWickets = 0;
@@ -120,33 +135,20 @@ public class PlayerWicketsServlet extends HttpServlet {
             int matchesBowled = 0;
 
             while (rs.next()) {
-                int team1StatsId = rs.getInt("ts1.id");
-                int teamId1 = rs.getInt("ts1.team_id");
-                int team2StatsId = rs.getInt("ts2.id");
-                int teamId2 = rs.getInt("ts2.team_id");
-
-                int matchWickets = 0;
-                int opponentBalls = 0;
-
-                if (teamId1 == Integer.parseInt(teamId)) {
-                    matchWickets = rs.getInt("ts1.player" + playerIndex + "_wickets");
-                    opponentBalls = rs.getInt("ts2.balls");
-                } else {
-                    matchWickets = rs.getInt("ts2.player" + playerIndex + "_wickets");
-                    opponentBalls = rs.getInt("ts1.balls");
-                }
+                int matchWickets = rs.getInt("wickets");
+                int matchBalls = rs.getInt("balls");
 
                 totalWickets += matchWickets;
 
-                if (opponentBalls <= 66) {
-                    if (playerIndex * 6 <= opponentBalls) {
+                if (matchBalls <= 66) {
+                    if (playerIndex * 6 <= matchBalls) {
                         totalBallsBowled += 6;
-                    } else if ((playerIndex - 1) * 6 < opponentBalls) {
-                        totalBallsBowled += opponentBalls - (playerIndex - 1) * 6;
+                    } else if ((playerIndex - 1) * 6 < matchBalls) {
+                        totalBallsBowled += matchBalls - (playerIndex - 1) * 6;
                     }
                 } else {
                     totalBallsBowled += 6;
-                    int remainingBalls = opponentBalls - 66;
+                    int remainingBalls = matchBalls - 66;
                     if (playerIndex <= 9) {
                         if (playerIndex * 6 <= remainingBalls) {
                             totalBallsBowled += 6;
@@ -174,5 +176,31 @@ public class PlayerWicketsServlet extends HttpServlet {
                 stmt.close();
             }
         }
+    }
+
+    private int getPlayerIndex(Connection conn, String teamId, int playerId) throws Exception {
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        String query = "SELECT id FROM players WHERE team_id = ?";
+        try {
+            stmt = conn.prepareStatement(query);
+            stmt.setString(1, teamId);
+            rs = stmt.executeQuery();
+            int index = 1;
+            while (rs.next()) {
+                if (rs.getInt("id") == playerId) {
+                    return index;
+                }
+                index++;
+            }
+        } finally {
+            if (rs != null) {
+                rs.close();
+            }
+            if (stmt != null) {
+                stmt.close();
+            }
+        }
+        return -1;
     }
 }

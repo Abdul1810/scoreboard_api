@@ -43,8 +43,13 @@ public class MatchServlet extends HttpServlet {
 
                     Map<String, Object> match = new HashMap<>();
                     match.put("id", String.valueOf(matchIds.get("id")));
+                    match.put("is_completed", rs.getString("is_completed"));
+                    match.put("winner", rs.getString("winner"));
+                    match.put("current_batting", rs.getString("current_batting"));
+                    match.put("team1_balls", rs.getInt("team1_balls"));
+                    match.put("team2_balls", rs.getInt("team2_balls"));
 
-                    query = "SELECT * FROM teams WHERE id = ?";
+                    query = "SELECT t.name, p.name as player_name FROM teams t JOIN players p ON t.id = p.team_id WHERE t.id = ?";
                     stmt = conn.prepareStatement(query);
 
                     stmt.setInt(1, matchIds.get("team1_id"));
@@ -53,9 +58,9 @@ public class MatchServlet extends HttpServlet {
                     if (rs.next()) {
                         match.put("team1", rs.getString("name"));
                         List<String> team1Players = new ArrayList<>();
-                        for (int i = 1; i <= 11; i++) {
-                            team1Players.add(rs.getString("player" + i));
-                        }
+                        do {
+                            team1Players.add(rs.getString("player_name"));
+                        } while (rs.next());
                         match.put("team1_players", team1Players);
                     }
 
@@ -65,25 +70,33 @@ public class MatchServlet extends HttpServlet {
                     if (rs.next()) {
                         match.put("team2", rs.getString("name"));
                         List<String> team2Players = new ArrayList<>();
-                        for (int i = 1; i <= 11; i++) {
-                            team2Players.add(rs.getString("player" + i));
-                        }
+                        do {
+                            team2Players.add(rs.getString("player_name"));
+                        } while (rs.next());
                         match.put("team2_players", team2Players);
                     }
 
-                    // Fetch match stats
-                    query = "SELECT * FROM match_stats WHERE match_id = ?";
+                    // Fetch player stats for the match
+                    query = "SELECT ps.player_id, ps.runs, ps.wickets, p.name as player_name " +
+                            "FROM player_stats ps " +
+                            "JOIN players p ON ps.player_id = p.id " +
+                            "WHERE ps.match_id = ? AND (ps.team_id = ? OR ps.team_id = ?)";
                     stmt = conn.prepareStatement(query);
                     stmt.setInt(1, matchIds.get("id"));
+                    stmt.setInt(2, matchIds.get("team1_id"));
+                    stmt.setInt(3, matchIds.get("team2_id"));
                     rs = stmt.executeQuery();
 
-                    if (rs.next()) {
-                        match.put("team1_stats_id", rs.getInt("team1_stats_id"));
-                        match.put("team2_stats_id", rs.getInt("team2_stats_id"));
-                        match.put("is_completed", rs.getString("is_completed"));
-                        match.put("winner", rs.getString("winner"));
-                        match.put("current_batting", rs.getString("current_batting"));
+                    Map<String, Map<String, Integer>> playerStats = new HashMap<>();
+                    while (rs.next()) {
+                        String playerName = rs.getString("player_name");
+                        int runs = rs.getInt("runs");
+                        int wickets = rs.getInt("wickets");
+                        playerStats.putIfAbsent(playerName, new HashMap<>());
+                        playerStats.get(playerName).put("runs", runs);
+                        playerStats.get(playerName).put("wickets", wickets);
                     }
+                    match.put("player_stats", playerStats);
 
                     response.getWriter().write(objectMapper.writeValueAsString(match));
                 } else {
@@ -101,7 +114,7 @@ public class MatchServlet extends HttpServlet {
                     Map<String, String> match = new HashMap<>();
                     match.put("id", String.valueOf(rs.getInt("id")));
 
-                    query = "SELECT * FROM teams WHERE id = ?";
+                    query = "SELECT name FROM teams WHERE id = ?";
                     try (PreparedStatement stmt1 = conn.prepareStatement(query)) {
                         stmt1.setInt(1, rs.getInt("team1_id"));
                         ResultSet rsTeam = stmt1.executeQuery();
@@ -147,8 +160,6 @@ public class MatchServlet extends HttpServlet {
         Map<String, String> match = objectMapper.readValue(request.getReader(), HashMap.class);
         Connection conn = null;
         PreparedStatement insertMatchStmt = null;
-        PreparedStatement insertTeamStatsStmt = null;
-        PreparedStatement insertMatchStatsStmt = null;
         ResultSet rs = null;
 
         try {
@@ -164,7 +175,7 @@ public class MatchServlet extends HttpServlet {
             }
 
             // Insert into matches table
-            String insertMatchQuery = "INSERT INTO matches (team1_id, team2_id) VALUES (?, ?)";
+            String insertMatchQuery = "INSERT INTO matches (team1_id, team2_id, is_completed, winner, current_batting, team1_balls, team2_balls) VALUES (?, ?, 'false', 'none', 'team1', 0, 0)";
             insertMatchStmt = conn.prepareStatement(insertMatchQuery, Statement.RETURN_GENERATED_KEYS);
             insertMatchStmt.setInt(1, Integer.parseInt(team1Id));
             insertMatchStmt.setInt(2, Integer.parseInt(team2Id));
@@ -173,37 +184,24 @@ public class MatchServlet extends HttpServlet {
             rs = insertMatchStmt.getGeneratedKeys();
             if (rs.next()) {
                 int matchId = rs.getInt(1);
-                System.out.println("Going to insert match stats for match ID: " + matchId);
-                // Insert into team_stats table for both teams
-                String insertTeamStatsQuery = "INSERT INTO team_stats (team_id, player1_runs, player2_runs, player3_runs, player4_runs, player5_runs, " +
-                        "player6_runs, player7_runs, player8_runs, player9_runs, player10_runs, player11_runs, " +
-                        "player1_wickets, player2_wickets, player3_wickets, player4_wickets, player5_wickets, " +
-                        "player6_wickets, player7_wickets, player8_wickets, player9_wickets, player10_wickets, player11_wickets, balls) " +
-                        "VALUES (?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)";
+                System.out.println("Going to insert player stats for match ID: " + matchId);
 
-                insertTeamStatsStmt = conn.prepareStatement(insertTeamStatsQuery, Statement.RETURN_GENERATED_KEYS);
-                insertTeamStatsStmt.setInt(1, Integer.parseInt(team1Id));
-                insertTeamStatsStmt.executeUpdate();
-                rs = insertTeamStatsStmt.getGeneratedKeys();
-                int team1StatsId = rs.next() ? rs.getInt(1) : -1;
+                // Insert default player stats for both teams
+                String insertPlayerStatsQuery = "INSERT INTO player_stats (player_id, match_id, team_id, runs, wickets) " +
+                        "SELECT id, ?, ?, 0, 0 FROM players WHERE team_id = ?";
 
-                System.out.println("Team 1 stats ID: " + team1StatsId);
+                PreparedStatement insertPlayerStatsStmt = conn.prepareStatement(insertPlayerStatsQuery);
 
-                insertTeamStatsStmt.setInt(1, Integer.parseInt(team2Id));
-                insertTeamStatsStmt.executeUpdate();
-                rs = insertTeamStatsStmt.getGeneratedKeys();
-                int team2StatsId = rs.next() ? rs.getInt(1) : -1;
+                // Insert player stats for team 1
+                insertPlayerStatsStmt.setInt(1, matchId);
+                insertPlayerStatsStmt.setInt(2, Integer.parseInt(team1Id));
+                insertPlayerStatsStmt.setInt(3, Integer.parseInt(team1Id));
+                insertPlayerStatsStmt.executeUpdate();
 
-                System.out.println("Team 2 stats ID: " + team2StatsId);
-
-                // Insert into match_stats table
-                String insertMatchStatsQuery = "INSERT INTO match_stats (match_id, team1_stats_id, team2_stats_id, is_completed, winner, current_batting) " +
-                        "VALUES (?, ?, ?, 'false', 'none', 'team1')";
-                insertMatchStatsStmt = conn.prepareStatement(insertMatchStatsQuery);
-                insertMatchStatsStmt.setInt(1, matchId);
-                insertMatchStatsStmt.setInt(2, team1StatsId);
-                insertMatchStatsStmt.setInt(3, team2StatsId);
-                insertMatchStatsStmt.executeUpdate();
+                // Insert player stats for team 2
+                insertPlayerStatsStmt.setInt(2, Integer.parseInt(team2Id));
+                insertPlayerStatsStmt.setInt(3, Integer.parseInt(team2Id));
+                insertPlayerStatsStmt.executeUpdate();
             }
 
             MatchListener.fireMatchesUpdate();
@@ -217,8 +215,6 @@ public class MatchServlet extends HttpServlet {
             try {
                 if (rs != null) rs.close();
                 if (insertMatchStmt != null) insertMatchStmt.close();
-                if (insertTeamStatsStmt != null) insertTeamStatsStmt.close();
-                if (insertMatchStatsStmt != null) insertMatchStatsStmt.close();
             } catch (SQLException e) {
                 System.err.println("Error closing resources: " + e.getMessage());
             }
@@ -237,8 +233,7 @@ public class MatchServlet extends HttpServlet {
         }
 
         Connection conn = null;
-        PreparedStatement deleteMatchStatsStmt = null;
-        PreparedStatement deleteTeamStatsStmt = null;
+        PreparedStatement deletePlayerStatsStmt = null;
         PreparedStatement deleteMatchStmt = null;
 
         try {
@@ -261,20 +256,11 @@ public class MatchServlet extends HttpServlet {
                 return;
             }
 
-            // Delete from match_stats table
-            String deleteMatchStatsQuery = "DELETE FROM match_stats WHERE match_id = ?";
-            deleteMatchStatsStmt = conn.prepareStatement(deleteMatchStatsQuery);
-            deleteMatchStatsStmt.setInt(1, matchIdInt);
-            deleteMatchStatsStmt.executeUpdate();
-
-            // Delete from team_stats table
-            String deleteTeamStatsQuery = "DELETE FROM team_stats WHERE id IN (" +
-                    "SELECT team1_stats_id FROM match_stats WHERE match_id = ? UNION " +
-                    "SELECT team2_stats_id FROM match_stats WHERE match_id = ?)";
-            deleteTeamStatsStmt = conn.prepareStatement(deleteTeamStatsQuery);
-            deleteTeamStatsStmt.setInt(1, matchIdInt);
-            deleteTeamStatsStmt.setInt(2, matchIdInt);
-            deleteTeamStatsStmt.executeUpdate();
+            // Delete from player_stats table
+            String deletePlayerStatsQuery = "DELETE FROM player_stats WHERE match_id = ?";
+            deletePlayerStatsStmt = conn.prepareStatement(deletePlayerStatsQuery);
+            deletePlayerStatsStmt.setInt(1, matchIdInt);
+            deletePlayerStatsStmt.executeUpdate();
 
             // Delete from matches table
             String deleteMatchQuery = "DELETE FROM matches WHERE id = ?";
@@ -299,8 +285,7 @@ public class MatchServlet extends HttpServlet {
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } finally {
             try {
-                if (deleteMatchStatsStmt != null) deleteMatchStatsStmt.close();
-                if (deleteTeamStatsStmt != null) deleteTeamStatsStmt.close();
+                if (deletePlayerStatsStmt != null) deletePlayerStatsStmt.close();
                 if (deleteMatchStmt != null) deleteMatchStmt.close();
             } catch (SQLException e) {
                 System.err.println("Error closing resources: " + e.getMessage());

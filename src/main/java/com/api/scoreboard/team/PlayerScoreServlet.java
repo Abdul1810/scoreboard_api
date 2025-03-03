@@ -11,9 +11,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @WebServlet("/api/total-score")
@@ -40,20 +38,15 @@ public class PlayerScoreServlet extends HttpServlet {
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
-        int playerIndex = -1;
+        int playerId = -1;
 
         try {
             conn = Database.getConnection();
 
-            stmt = conn.prepareStatement("SELECT * FROM teams WHERE id = ? AND (" +
-                    "player1 = ? OR player2 = ? OR player3 = ? OR player4 = ? OR player5 = ? OR " +
-                    "player6 = ? OR player7 = ? OR player8 = ? OR player9 = ? OR player10 = ? OR player11 = ?)");
-
-            stmt.setString(1, teamId);
-            for (int i = 2; i <= 12; i++) {
-                stmt.setString(i, player);
-            }
-
+            // Fetch player ID using player name
+            stmt = conn.prepareStatement("SELECT id FROM players WHERE name = ? AND team_id = ?");
+            stmt.setString(1, player);
+            stmt.setString(2, teamId);
             rs = stmt.executeQuery();
 
             if (!rs.next()) {
@@ -67,75 +60,47 @@ public class PlayerScoreServlet extends HttpServlet {
                 return;
             }
 
-            for (int i = 1; i <= 11; i++) {
-                if (rs.getString("player" + i).equals(player)) {
-                    playerIndex = i;
-                    break;
-                }
-            }
-
-            if (playerIndex == -1) {
-                response.setStatus(404);
-                jsonResponse.put("message", "Player not found in team");
-                try {
-                    response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-                } catch (IOException e) {
-                    System.out.println("Error: " + e.getMessage());
-                }
-                return;
-            }
+            playerId = rs.getInt("id");
 
             String matchQuery =
-                "SELECT ms.team1_stats_id, ms.team2_stats_id, ts1.*, ts2.* " +
-                "FROM match_stats ms " +
-                "JOIN team_stats ts1 ON ms.team1_stats_id = ts1.id " +
-                "JOIN team_stats ts2 ON ms.team2_stats_id = ts2.id " +
-                "WHERE ts1.team_id = ? OR ts2.team_id = ?";
+                "SELECT ps1.match_id, ps1.runs, ps1.wickets, SUM(ps2.wickets) AS wickets " +
+                "FROM player_stats ps1 " +
+                "JOIN matches m ON ps1.match_id = m.id " +
+                "LEFT JOIN player_stats ps2 " +
+                "ON ps1.match_id = ps2.match_id " +
+                "AND ps1.player_id <> ps2.player_id " +
+                "AND ps2.team_id IN (m.team1_id, m.team2_id) " +
+                "WHERE ps1.player_id = ? " +
+                "AND ? IN (m.team1_id, m.team2_id) " +
+                "GROUP BY ps1.match_id, ps1.runs, ps1.wickets";
 
             stmt = conn.prepareStatement(matchQuery);
-            stmt.setString(1, teamId);
+            stmt.setInt(1, playerId);
             stmt.setString(2, teamId);
             rs = stmt.executeQuery();
 
-            int totalScore = 0;
+            int totalRuns = 0;
             int matchesPlayed = 0;
 
+            int playerIndex = getPlayerIndex(conn, teamId, playerId);
+
             while (rs.next()) {
-                int team1StatsId = rs.getInt("ts1.id");
-                int teamId1 = rs.getInt("ts1.team_id");
-                int team2StatsId = rs.getInt("ts2.id");
-                int teamId2 = rs.getInt("ts2.team_id");
+                int playerRuns = rs.getInt("runs");
+                int opponentWickets = rs.getInt("wickets");
 
-                System.out.println("team1StatsId: " + team1StatsId);
-                System.out.println("teamId1: " + teamId1);
-                System.out.println("team2StatsId: " + team2StatsId);
-                System.out.println("teamId2: " + teamId2);
+                totalRuns += playerRuns;
 
-                int playerRuns = 0;
-                int opponentWickets = 0;
-
-                if (teamId1 == Integer.parseInt(teamId)) {
-                    playerRuns = rs.getInt("ts1.player" + playerIndex + "_runs");
-                    opponentWickets = rs.getInt("ts2.total_wickets");
-                } else {
-                    playerRuns = rs.getInt("ts2.player" + playerIndex + "_runs");
-                    opponentWickets = rs.getInt("ts1.total_wickets");
-                }
-
-                totalScore += playerRuns;
-
-                if ((playerIndex-1) <= opponentWickets) {
+                if ((playerIndex - 1) <= opponentWickets) {
                     matchesPlayed++;
                 }
             }
-
             if (matchesPlayed == 0) {
                 response.setStatus(404);
                 jsonResponse.put("message", player + " has not batted in any matches");
             } else {
                 jsonResponse.put("player", player);
                 jsonResponse.put("team_id", teamId);
-                jsonResponse.put("total_score", totalScore);
+                jsonResponse.put("total_score", totalRuns);
                 jsonResponse.put("matches_played", matchesPlayed);
             }
 
@@ -155,5 +120,31 @@ public class PlayerScoreServlet extends HttpServlet {
                 System.out.println("Error closing resources: " + e.getMessage());
             }
         }
+    }
+
+    private int getPlayerIndex(Connection conn, String teamId, int playerId) throws Exception {
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        String query = "SELECT id FROM players WHERE team_id = ?";
+        try {
+            stmt = conn.prepareStatement(query);
+            stmt.setString(1, teamId);
+            rs = stmt.executeQuery();
+            int index = 1;
+            while (rs.next()) {
+                if (rs.getInt("id") == playerId) {
+                    return index;
+                }
+                index++;
+            }
+        } finally {
+            if (rs != null) {
+                rs.close();
+            }
+            if (stmt != null) {
+                stmt.close();
+            }
+        }
+        return -1;
     }
 }

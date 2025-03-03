@@ -43,25 +43,22 @@
             socket.onmessage = function (event) {
                 const data = JSON.parse(event.data);
                 console.log(data);
-                // {"team1_balls":0,"team2_runs":[0,0,0,0,0,0,0,0,0,0,0],"winner":"none","team2_balls":0,"current_batting":"team1","team2_score":0,"team2_wickets":0,"team1_wickets":0,"team1_runs":[0,0,0,0,0,0,0,0,0,0,0],"is_completed":"false","team1_score":0}
-                // current_player score
                 document.getElementById("team1score").value = data.team1_runs[data.team2_wickets];
                 document.getElementById("team2score").value = data.team2_runs[data.team1_wickets];
                 document.getElementById("team1balls").value = data.team1_balls;
                 document.getElementById("team2balls").value = data.team2_balls;
 
                 updateScoreTable(data);
+                current_batting = data.current_batting;
                 document.getElementById("team1-stats").textContent = `${data.team1_score}/${data.team1_wickets}`;
                 document.getElementById("team2-stats").textContent = `${data.team2_score}/${data.team2_wickets}`;
 
                 if (data.is_completed === "false") {
                     if (data.current_batting === "team1") {
-                        current_batting = "team1";
                         document.getElementById("match-result").textContent = `${team1Players[data.team1_wickets]} from Team 1 is batting`;
                         document.getElementById("team1stats").style.backgroundColor = "aliceblue";
                         document.getElementById("team2stats").style.backgroundColor = "white";
                     } else {
-                        current_batting = "team2";
                         document.getElementById("match-result").textContent = `${team2Players[data.team2_wickets]} from Team 2 is batting`;
                         document.getElementById("team2stats").style.backgroundColor = "aliceblue";
                         document.getElementById("team1stats").style.backgroundColor = "white";
@@ -109,6 +106,12 @@
             runsRow2.innerHTML = "<td>Runs</td>";
             outRow2.innerHTML = "<td>Wickets</td>";
 
+            const team1_runs = Object.values(data.team1_runs);
+            const team2_runs = Object.values(data.team2_runs);
+
+            const team1_outs = Object.values(data.team1_outs);
+            const team2_outs = Object.values(data.team2_outs);
+
             for (let i = 0; i < team1Players.length; i++) {
                 const playerCell = document.createElement("th");
                 playerCell.textContent = team1Players[i] || "Player " + (i + 1);
@@ -116,7 +119,7 @@
 
                 const runsCell = document.createElement("td");
                 if (data.team2_wickets >= i) {
-                    runsCell.textContent = data.team1_runs[i] || 0;
+                    runsCell.textContent = team1_runs[i] || 0;
                 } else {
                     runsCell.textContent = "-";
                 }
@@ -129,11 +132,11 @@
                 playerRow2.appendChild(playerCell);
 
                 const runsCell = document.createElement("td");
-                if (current_batting === "team1") {
+                if (current_batting === "team1" && data.is_completed === false) {
                     runsCell.textContent = "-";
                 } else {
                     if (data.team1_wickets >= i) {
-                        runsCell.textContent = data.team2_runs[i] || 0;
+                        runsCell.textContent = team2_runs[i] || 0;
                     } else {
                         runsCell.textContent = "-";
                     }
@@ -141,9 +144,9 @@
                 runsRow2.appendChild(runsCell);
             }
 
-            for (let i = 0; i < data.team2_outs.length; i++) {
-                if (data.team2_outs[i] !== 0) {
-                    for (let j = 0; j < data.team2_outs[i]; j++) {
+            for (let i = 0; i < team2_outs.length; i++) {
+                if (team2_outs[i] !== 0) {
+                    for (let j = 0; j < team2_outs[i]; j++) {
                         const outCell = document.createElement("td");
                         outCell.textContent = team2Players[i];
                         outRow1.appendChild(outCell);
@@ -151,9 +154,9 @@
                 }
             }
 
-            for (let i = 0; i < data.team1_outs.length; i++) {
-                if (data.team1_outs[i] !== 0) {
-                    for (let j = 0; j < data.team1_outs[i]; j++) {
+            for (let i = 0; i < team1_outs.length; i++) {
+                if (team1_outs[i] !== 0) {
+                    for (let j = 0; j < team1_outs[i]; j++) {
                         const outCell = document.createElement("td");
                         outCell.textContent = team1Players[i];
                         outRow2.appendChild(outCell);
