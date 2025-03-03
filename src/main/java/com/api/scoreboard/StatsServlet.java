@@ -294,14 +294,26 @@ public class StatsServlet extends HttpServlet {
             stmt.setString(2, matchStats.get("is_completed"));
             stmt.setString(3, matchStats.get("winner"));
             stmt.setInt(4, Integer.parseInt(matchId));
-
             stmt.executeUpdate();
+
+            String findStatsIdQuery = "SELECT team1_stats_id, team2_stats_id FROM match_stats WHERE match_id = ?";
+            stmt = conn.prepareStatement(findStatsIdQuery);
+            stmt.setInt(1, Integer.parseInt(matchId));
+            ResultSet rs = stmt.executeQuery();
+
+            int team1_stats_id = 0;
+            int team2_stats_id = 0;
+
+            if (rs.next()) {
+                team1_stats_id = rs.getInt("team1_stats_id");
+                team2_stats_id = rs.getInt("team2_stats_id");
+            }
 
             query = "UPDATE team_stats SET player1_runs = ?, player1_wickets = ?, player2_runs = ?, player2_wickets = ?, " +
                     "player3_runs = ?, player3_wickets = ?, player4_runs = ?, player4_wickets = ?, player5_runs = ?, " +
                     "player5_wickets = ?, player6_runs = ?, player6_wickets = ?, player7_runs = ?, player7_wickets = ?, " +
                     "player8_runs = ?, player8_wickets = ?, player9_runs = ?, player9_wickets = ?, player10_runs = ?, " +
-                    "player10_wickets = ?, player11_runs = ?, player11_wickets = ? , balls = ? WHERE team_id = ?";
+                    "player10_wickets = ?, player11_runs = ?, player11_wickets = ? , balls = ? WHERE id = ?";
             stmt = conn.prepareStatement(query);
 
             for (int i = 1; i <= 11; i++) {
@@ -309,7 +321,7 @@ public class StatsServlet extends HttpServlet {
                 stmt.setInt(i * 2, team1_wickets.get(i - 1));
             }
             stmt.setInt(23, Integer.parseInt(matchStats.get("team1_balls")));
-            stmt.setInt(24, 1);
+            stmt.setInt(24, team1_stats_id);
             stmt.executeUpdate();
 
             for (int i = 1; i <= 11; i++) {
@@ -317,7 +329,7 @@ public class StatsServlet extends HttpServlet {
                 stmt.setInt(i * 2, team2_wickets.get(i - 1));
             }
             stmt.setInt(23, Integer.parseInt(matchStats.get("team2_balls")));
-            stmt.setInt(24, 2);
+            stmt.setInt(24, team2_stats_id);
             stmt.executeUpdate();
         } catch (SQLException e) {
             System.out.println("Error updating match stats: " + e.getMessage());

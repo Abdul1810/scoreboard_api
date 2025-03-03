@@ -24,6 +24,8 @@
                         document.title = data.team1 + ' vs ' + data.team2;
                         document.getElementById("team1").innerText = data.team1;
                         document.getElementById("team2").innerText = data.team2;
+                        document.getElementById("team1table").innerText = data.team1 + " Score-table";
+                        document.getElementById("team2table").innerText = data.team2 + " Score-table";
                         team1Players = data.team1_players;
                         team2Players = data.team2_players;
                     }
@@ -278,7 +280,7 @@
 </div>
 <br>
 
-<h3>Team1 Score-table</h3>
+<h3 id="team1table">Team1 Score-table</h3>
 <table border="1" style="width: 80%; margin: auto; border-collapse: collapse;">
     <thead>
     <tr id="playerRow1">
@@ -295,7 +297,7 @@
     </tbody>
 </table>
 
-<h3>Team2 Score-table</h3>
+<h3 id="team2table">Team2 Score-table</h3>
 <table border="1" style="width: 80%; margin: auto; border-collapse: collapse;">
     <thead>
     <tr id="playerRow2">

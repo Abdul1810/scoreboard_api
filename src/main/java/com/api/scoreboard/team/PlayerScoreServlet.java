@@ -85,7 +85,8 @@ public class PlayerScoreServlet extends HttpServlet {
                 return;
             }
 
-            String matchQuery = "SELECT ms.*, ts1.*, ts2.* " +
+            String matchQuery =
+                "SELECT ms.team1_stats_id, ms.team2_stats_id, ts1.*, ts2.* " +
                 "FROM match_stats ms " +
                 "JOIN team_stats ts1 ON ms.team1_stats_id = ts1.id " +
                 "JOIN team_stats ts2 ON ms.team2_stats_id = ts2.id " +
@@ -105,6 +106,11 @@ public class PlayerScoreServlet extends HttpServlet {
                 int team2StatsId = rs.getInt("ts2.id");
                 int teamId2 = rs.getInt("ts2.team_id");
 
+                System.out.println("team1StatsId: " + team1StatsId);
+                System.out.println("teamId1: " + teamId1);
+                System.out.println("team2StatsId: " + team2StatsId);
+                System.out.println("teamId2: " + teamId2);
+
                 int playerRuns = 0;
                 int opponentWickets = 0;
 
@@ -118,7 +124,7 @@ public class PlayerScoreServlet extends HttpServlet {
 
                 totalScore += playerRuns;
 
-                if (playerIndex <= opponentWickets) {
+                if ((playerIndex-1) <= opponentWickets) {
                     matchesPlayed++;
                 }
             }

@@ -1,60 +1,74 @@
-CREATE TABLE teams (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       name VARCHAR(255) UNIQUE NOT NULL,
-       player1 VARCHAR(255) NOT NULL,
-       player2 VARCHAR(255) NOT NULL,
-       player3 VARCHAR(255) NOT NULL,
-       player4 VARCHAR(255) NOT NULL,
-       player5 VARCHAR(255) NOT NULL,
-       player6 VARCHAR(255) NOT NULL,
-       player7 VARCHAR(255) NOT NULL,
-       player8 VARCHAR(255) NOT NULL,
-       player9 VARCHAR(255) NOT NULL,
-       player10 VARCHAR(255) NOT NULL,
-       player11 VARCHAR(255) NOT NULL,
-       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE teams
+(
+    id         int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name       varchar(255) NOT NULL UNIQUE,
+    player1    varchar(255) NOT NULL,
+    player2    varchar(255) NOT NULL,
+    player3    varchar(255) NOT NULL,
+    player4    varchar(255) NOT NULL,
+    player5    varchar(255) NOT NULL,
+    player6    varchar(255) NOT NULL,
+    player7    varchar(255) NOT NULL,
+    player8    varchar(255) NOT NULL,
+    player9    varchar(255) NOT NULL,
+    player10   varchar(255) NOT NULL,
+    player11   varchar(255) NOT NULL,
+    created_at datetime     NOT NULL DEFAULT current_timestamp(),
 );
 
-CREATE TABLE matches (
-     id INT AUTO_INCREMENT PRIMARY KEY,
-     team1_id INT NOT NULL,
-     team2_id INT NOT NULL,
-     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-     FOREIGN KEY (team1_id) REFERENCES teams(id) ON DELETE CASCADE,
-     FOREIGN KEY (team2_id) REFERENCES teams(id) ON DELETE CASCADE
+CREATE TABLE matches
+(
+    id         int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    team1_id   int(11) NOT NULL,
+    team2_id   int(11) NOT NULL,
+    created_at datetime NOT NULL DEFAULT current_timestamp(),
+    FOREIGN KEY (team1_id) REFERENCES teams (id) ON DELETE CASCADE,
+    FOREIGN KEY (team2_id) REFERENCES teams (id) ON DELETE CASCADE
 );
 
-CREATE TABLE match_stats (
-     id INT AUTO_INCREMENT PRIMARY KEY,
-     match_id INT NOT NULL,
-     team1_player1_runs INT DEFAULT 0,team1_player2_runs INT DEFAULT 0,team1_player3_runs INT DEFAULT 0,team1_player4_runs INT DEFAULT 0,team1_player5_runs INT DEFAULT 0,
-     team1_player6_runs INT DEFAULT 0,team1_player7_runs INT DEFAULT 0,team1_player8_runs INT DEFAULT 0,team1_player9_runs INT DEFAULT 0,team1_player10_runs INT DEFAULT 0,
-     team1_player11_runs INT DEFAULT 0,
-     team2_player1_runs INT DEFAULT 0,team2_player2_runs INT DEFAULT 0,team2_player3_runs INT DEFAULT 0,team2_player4_runs INT DEFAULT 0,team2_player5_runs INT DEFAULT 0,
-     team2_player6_runs INT DEFAULT 0,team2_player7_runs INT DEFAULT 0,team2_player8_runs INT DEFAULT 0,team2_player9_runs INT DEFAULT 0,team2_player10_runs INT DEFAULT 0,
-     team2_player11_runs INT DEFAULT 0,
-     team1_player1_wickets INT DEFAULT 0,team1_player2_wickets INT DEFAULT 0,team1_player3_wickets INT DEFAULT 0,team1_player4_wickets INT DEFAULT 0,team1_player5_wickets INT DEFAULT 0,
-     team1_player6_wickets INT DEFAULT 0,team1_player7_wickets INT DEFAULT 0,team1_player8_wickets INT DEFAULT 0,team1_player9_wickets INT DEFAULT 0,team1_player10_wickets INT DEFAULT 0,
-     team1_player11_wickets INT DEFAULT 0,
-     team2_player1_wickets INT DEFAULT 0,team2_player2_wickets INT DEFAULT 0,team2_player3_wickets INT DEFAULT 0,team2_player4_wickets INT DEFAULT 0,team2_player5_wickets INT DEFAULT 0,
-     team2_player6_wickets INT DEFAULT 0,team2_player7_wickets INT DEFAULT 0,team2_player8_wickets INT DEFAULT 0,team2_player9_wickets INT DEFAULT 0,team2_player10_wickets INT DEFAULT 0,
-     team2_player11_wickets INT DEFAULT 0,
-     team1_balls INT DEFAULT 0 NOT NULL,
-     team2_balls INT DEFAULT 0 NOT NULL,
-     current_batting ENUM('team1', 'team2') NOT NULL DEFAULT 'team1',
-     is_completed ENUM('true', 'false') NOT NULL DEFAULT 'false',
-     winner ENUM('team1', 'team2', 'none', 'tie') NOT NULL DEFAULT 'none',
-     team1_wickets INT GENERATED ALWAYS AS (
-         team2_player1_wickets + team2_player2_wickets + team2_player3_wickets +
-         team2_player4_wickets + team2_player5_wickets + team2_player6_wickets +
-         team2_player7_wickets + team2_player8_wickets + team2_player9_wickets +
-         team2_player10_wickets + team2_player11_wickets
-     ) VIRTUAL,
-     team2_wickets INT GENERATED ALWAYS AS (
-         team1_player1_wickets + team1_player2_wickets + team1_player3_wickets +
-         team1_player4_wickets + team1_player5_wickets + team1_player6_wickets +
-         team1_player7_wickets + team1_player8_wickets + team1_player9_wickets +
-         team1_player10_wickets + team1_player11_wickets
-     ) VIRTUAL,
-     FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE
+CREATE TABLE match_stats
+(
+    id              int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    match_id        int(11) NOT NULL,
+    team1_stats_id  int(11) NOT NULL,
+    team2_stats_id  int(11) NOT NULL,
+    is_completed    enum('true','false') NOT NULL DEFAULT 'false',
+    winner          enum('team1','team2','none','tie') NOT NULL DEFAULT 'none',
+    current_batting enum('team1','team2') NOT NULL DEFAULT 'team1',
+    created_at      datetime NOT NULL DEFAULT current_timestamp(),
+    FOREIGN KEY (match_id) REFERENCES matches (id) ON DELETE CASCADE,
+    FOREIGN KEY (team1_stats_id) REFERENCES team_stats (id) ON DELETE CASCADE,
+    FOREIGN KEY (team2_stats_id) REFERENCES team_stats (id) ON DELETE CASCADE
+);
+
+CREATE TABLE team_stats
+(
+    id               int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    team_id          int(11) NOT NULL,
+    player1_runs     int(11) DEFAULT 0,
+    player2_runs     int(11) DEFAULT 0,
+    player3_runs     int(11) DEFAULT 0,
+    player4_runs     int(11) DEFAULT 0,
+    player5_runs     int(11) DEFAULT 0,
+    player6_runs     int(11) DEFAULT 0,
+    player7_runs     int(11) DEFAULT 0,
+    player8_runs     int(11) DEFAULT 0,
+    player9_runs     int(11) DEFAULT 0,
+    player10_runs    int(11) DEFAULT 0,
+    player11_runs    int(11) DEFAULT 0,
+    player1_wickets  int(11) DEFAULT 0,
+    player2_wickets  int(11) DEFAULT 0,
+    player3_wickets  int(11) DEFAULT 0,
+    player4_wickets  int(11) DEFAULT 0,
+    player5_wickets  int(11) DEFAULT 0,
+    player6_wickets  int(11) DEFAULT 0,
+    player7_wickets  int(11) DEFAULT 0,
+    player8_wickets  int(11) DEFAULT 0,
+    player9_wickets  int(11) DEFAULT 0,
+    player10_wickets int(11) DEFAULT 0,
+    player11_wickets int(11) DEFAULT 0,
+    balls            int(11) NOT NULL DEFAULT 0,
+    total_score      int(11) GENERATED ALWAYS AS (player1_runs + player2_runs + player3_runs + player4_runs + player5_runs + player6_runs + player7_runs + player8_runs + player9_runs + player10_runs + player11_runs) STORED,
+    total_wickets    int(11) GENERATED ALWAYS AS (player1_wickets + player2_wickets + player3_wickets + player4_wickets + player5_wickets + player6_wickets + player7_wickets + player8_wickets + player9_wickets + player10_wickets + player11_wickets) STORED,
+    FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE
 );
