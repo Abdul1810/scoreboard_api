@@ -140,6 +140,8 @@ public class StatsListener {
                 int team2_balls = 0;
                 List<String> team1WicketsMap = new ArrayList<>();
                 List<String> team2WicketsMap = new ArrayList<>();
+                List<String> team1BallsMap = new ArrayList<>();
+                List<String> team2BallsMap = new ArrayList<>();
 
                 while (rs.next()) {
                     int playerId = rs.getInt("player_id");
@@ -152,11 +154,13 @@ public class StatsListener {
                     if (teamId == team1Id) {
                         team1Runs.put(playerId, runs);
                         team1Wickets.put(playerId, wickets);
+                        team1BallsMap.add(String.valueOf(balls));
                         team1_balls += balls;
                         team1WicketsMap.add(wicketerName);
                     } else if (teamId == team2Id) {
                         team2Runs.put(playerId, runs);
                         team2Wickets.put(playerId, wickets);
+                        team2BallsMap.add(String.valueOf(balls));
                         team2_balls += balls;
                         team2WicketsMap.add(wicketerName);
                     }
@@ -174,6 +178,8 @@ public class StatsListener {
                 matchStats.put("team2_balls", team2_balls);
                 matchStats.put("team1_wickets_map", team1WicketsMap);
                 matchStats.put("team2_wickets_map", team2WicketsMap);
+                matchStats.put("team1_balls_map", team1BallsMap);
+                matchStats.put("team2_balls_map", team2BallsMap);
             }
         } catch (Exception e) {
             System.out.println("Error fetching match stats: " + e.getMessage());

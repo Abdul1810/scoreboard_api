@@ -144,7 +144,6 @@ public class StatsServlet extends HttpServlet {
             team2Wickets = sortHashMapWithVals(team2Wickets);
 
             int currentPlayerId = activeBatsmanIndex;
-
             if (currentPlayerId == -1) {
                 response.setStatus(400);
                 jsonResponse.put("message", "Invalid player ID");
@@ -273,6 +272,8 @@ public class StatsServlet extends HttpServlet {
             matchData.put("team2_balls", team2_balls);
             matchData.put("team1_wickets_map", team1WicketsMap);
             matchData.put("team2_wickets_map", team2WicketsMap);
+            matchData.put("team1_balls_map", team1BallsMap);
+            matchData.put("team2_balls_map", team2BallsMap);
 
             StatsListener.fireStatsUpdate(matchId, objectMapper.writeValueAsString(matchData));
             response.setStatus(200);

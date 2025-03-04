@@ -184,20 +184,25 @@
         function updateScoreTable(data) {
             const playerRow1 = document.getElementById("playerRow1");
             const runsRow1 = document.getElementById("runsRow1");
+            const ballsRow1 = document.getElementById("ballsRow1");
             const outRow1 = document.getElementById("outRow1");
             const playerRow2 = document.getElementById("playerRow2");
             const runsRow2 = document.getElementById("runsRow2");
+            const ballsRow2 = document.getElementById("ballsRow2");
             const outRow2 = document.getElementById("outRow2");
 
             playerRow1.innerHTML = "<th>Players</th>";
             runsRow1.innerHTML = "<td>Runs</td>";
+            ballsRow1.innerHTML = "<td>Balls</td>";
             outRow1.innerHTML = "<td>Wicket Taker</td>";
             playerRow2.innerHTML = "<th>Players</th>";
             runsRow2.innerHTML = "<td>Runs</td>";
+            ballsRow2.innerHTML = "<td>Balls</td>";
             outRow2.innerHTML = "<td>Wicket Taker</td>";
 
             const team1_runs = Object.values(data.team1_runs);
             const team2_runs = Object.values(data.team2_runs);
+
 
             for (let i = 0; i < team1Players.length; i++) {
                 const playerCell = document.createElement("th");
@@ -231,6 +236,30 @@
                 runsRow2.appendChild(runsCell);
             }
 
+            for (let i = 0; i < data.team1_balls_map.length; i++) {
+                if (data.team1_balls_map[i] !== "0") {
+                    const outCell = document.createElement("td");
+                    outCell.textContent = data.team1_balls_map[i];
+                    ballsRow1.appendChild(outCell);
+                } else {
+                    const outCell = document.createElement("td");
+                    outCell.textContent = "-";
+                    ballsRow1.appendChild(outCell);
+                }
+            }
+
+            for (let i = 0; i < data.team2_balls_map.length; i++) {
+                if (data.team2_balls_map[i] !== "0") {
+                    const outCell = document.createElement("td");
+                    outCell.textContent = data.team2_balls_map[i];
+                    ballsRow2.appendChild(outCell);
+                } else {
+                    const outCell = document.createElement("td");
+                    outCell.textContent = "-";
+                    ballsRow2.appendChild(outCell);
+                }
+            }
+
             for (let i = 0; i < data.team1_wickets_map.length; i++) {
                 if (data.team1_wickets_map[i] !== null) {
                     const outCell = document.createElement("td");
@@ -258,10 +287,10 @@
 
         function updateWicketsTable(data) {
             const playeroutRow1 = document.getElementById("playeroutRow1");
-            const ballsRow1 = document.getElementById("ballsRow1");
+            const ballsRow1 = document.getElementById("ballsThrownRow1");
             const wicketsRow1 = document.getElementById("wicketsRow1");
             const playeroutRow2 = document.getElementById("playeroutRow2");
-            const ballsRow2 = document.getElementById("ballsRow2");
+            const ballsRow2 = document.getElementById("ballsThrownRow2");
             const wicketsRow2 = document.getElementById("wicketsRow2");
 
             playeroutRow1.innerHTML = "<th>Players</th>";
@@ -566,6 +595,9 @@
     <tr id="runsRow1">
         <td>Runs</td>
     </tr>
+    <tr id="ballsRow1">
+        <td>Balls</td>
+    </tr>
     <tr id="outRow1">
         <td>Wicket Taker</td>
     </tr>
@@ -583,6 +615,9 @@
     <tr id="runsRow2">
         <td>Runs</td>
     </tr>
+    <tr id="ballsRow2">
+        <td>Balls</td>
+    </tr>
     <tr id="outRow2">
         <td>Wicket Taker</td>
     </tr>
@@ -596,7 +631,7 @@
     </tr>
     </thead>
     <tbody>
-    <tr id="ballsRow1">
+    <tr id="ballsThrownRow1">
         <td>Balls</td>
     </tr>
     <tr id="wicketsRow1">
@@ -613,7 +648,7 @@
     </tr>
     </thead>
     <tbody>
-    <tr id="ballsRow2">
+    <tr id="ballsThrownRow2">
         <td>Balls</td>
     </tr>
     <tr id="wicketsRow2">
