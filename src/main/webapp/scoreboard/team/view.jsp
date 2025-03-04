@@ -174,7 +174,8 @@
                     }
                 })
                 .then(data => {
-                    document.getElementById('result').innerText = `${player}'s total score is ${data.total_score} in ${data.matches_played} matches.`;
+                    document.getElementById('result').innerText = `${player} has scored ${data.total_score} runs\nBalls faced: ${data.total_balls}\nMatches played: ${data.matches_played}`;
+                    <%--document.getElementById('result').innerText = `${player}'s total score is ${data.total_score} in ${data.matches_played} matches.`;--%>
                 })
                 .catch(error => {
                     console.error("Fetch Error:", error);

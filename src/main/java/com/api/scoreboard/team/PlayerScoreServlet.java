@@ -63,16 +63,16 @@ public class PlayerScoreServlet extends HttpServlet {
             playerId = rs.getInt("id");
 
             String matchQuery =
-                "SELECT ps1.match_id, ps1.runs, ps1.wickets, SUM(ps2.wickets) AS wickets " +
-                "FROM player_stats ps1 " +
-                "JOIN matches m ON ps1.match_id = m.id " +
-                "LEFT JOIN player_stats ps2 " +
-                "ON ps1.match_id = ps2.match_id " +
-                "AND ps1.player_id <> ps2.player_id " +
-                "AND ps2.team_id IN (m.team1_id, m.team2_id) " +
-                "WHERE ps1.player_id = ? " +
-                "AND ? IN (m.team1_id, m.team2_id) " +
-                "GROUP BY ps1.match_id, ps1.runs, ps1.wickets";
+                    "SELECT ps1.match_id, ps1.runs, ps1.balls, SUM(ps2.wickets) AS wickets " +
+                            "FROM player_stats ps1 " +
+                            "JOIN matches m ON ps1.match_id = m.id " +
+                            "LEFT JOIN player_stats ps2 " +
+                            "ON ps1.match_id = ps2.match_id " +
+                            "AND ps1.player_id <> ps2.player_id " +
+                            "AND ps2.team_id IN (m.team1_id, m.team2_id) " +
+                            "WHERE ps1.player_id = ? " +
+                            "AND ? IN (m.team1_id, m.team2_id) " +
+                            "GROUP BY ps1.match_id, ps1.runs, ps1.wickets, ps1.balls";
 
             stmt = conn.prepareStatement(matchQuery);
             stmt.setInt(1, playerId);
@@ -81,16 +81,16 @@ public class PlayerScoreServlet extends HttpServlet {
 
             int totalRuns = 0;
             int matchesPlayed = 0;
-
-            int playerIndex = getPlayerIndex(conn, teamId, playerId);
+            int totalBalls = 0;
 
             while (rs.next()) {
                 int playerRuns = rs.getInt("runs");
-                int opponentWickets = rs.getInt("wickets");
+                int ballsFaced = rs.getInt("balls");
 
                 totalRuns += playerRuns;
+                totalBalls += ballsFaced;
 
-                if ((playerIndex - 1) <= opponentWickets) {
+                if (ballsFaced > 0) {
                     matchesPlayed++;
                 }
             }
@@ -102,6 +102,7 @@ public class PlayerScoreServlet extends HttpServlet {
                 jsonResponse.put("team_id", teamId);
                 jsonResponse.put("total_score", totalRuns);
                 jsonResponse.put("matches_played", matchesPlayed);
+                jsonResponse.put("total_balls", totalBalls);
             }
 
             try {
@@ -120,31 +121,5 @@ public class PlayerScoreServlet extends HttpServlet {
                 System.out.println("Error closing resources: " + e.getMessage());
             }
         }
-    }
-
-    private int getPlayerIndex(Connection conn, String teamId, int playerId) throws Exception {
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        String query = "SELECT id FROM players WHERE team_id = ?";
-        try {
-            stmt = conn.prepareStatement(query);
-            stmt.setString(1, teamId);
-            rs = stmt.executeQuery();
-            int index = 1;
-            while (rs.next()) {
-                if (rs.getInt("id") == playerId) {
-                    return index;
-                }
-                index++;
-            }
-        } finally {
-            if (rs != null) {
-                rs.close();
-            }
-            if (stmt != null) {
-                stmt.close();
-            }
-        }
-        return -1;
     }
 }

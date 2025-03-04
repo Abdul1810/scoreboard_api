@@ -103,23 +103,26 @@
     </style>
     <script>
         let socket;
+        let reconnectInterval = 3000;
         document.addEventListener('DOMContentLoaded', function () {
+            initWS();
+        });
+
+        function initWS() {
             socket = new WebSocket('ws://localhost:8080/ws/matches');
 
             socket.onopen = function () {
                 console.log("WebSocket Connection Established");
             };
 
-            socket.onerror = function (error) {
-                console.error("WebSocket Error: ", error);
+            socket.onclose = function () {
+                document.getElementById("result").innerText = "Connection closed. Attempting to reconnect...";
+                setTimeout(initWS, reconnectInterval);
             };
 
-            socket.onclose = function () {
-                document.getElementById("result").innerText = "Connection closed. Refreshing...";
-                setTimeout(() => {
-                    location.reload();
-                }, 3000);
-                console.warn("WebSocket Connection Closed");
+            socket.onerror = function () {
+                document.getElementById("result").innerText = "Connection error. Attempting to reconnect...";
+                socket.close();
             };
 
             socket.onmessage = function (event) {
@@ -169,7 +172,7 @@
                     matchesContainer.appendChild(matchDiv);
                 });
             };
-        });
+        }
     </script>
 </head>
 <body>

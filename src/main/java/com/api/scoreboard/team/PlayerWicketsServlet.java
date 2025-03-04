@@ -113,18 +113,18 @@ public class PlayerWicketsServlet extends HttpServlet {
         PreparedStatement stmt = null;
         ResultSet rs = null;
 
+        // Query to get the player's wickets and the total balls faced by the opposing team
         String query = "SELECT ps.wickets, " +
-                "CASE " +
-                "    WHEN m.team1_id = ? THEN m.team2_balls " +
-                "    ELSE m.team1_balls " +
-                "END AS balls " +
+                "SUM(CASE WHEN ps_opp.team_id != ? THEN ps_opp.balls ELSE 0 END) AS opponent_balls " +
                 "FROM player_stats ps " +
                 "JOIN matches m ON ps.match_id = m.id " +
-                "WHERE ps.player_id = ? AND (m.team1_id = ? OR m.team2_id = ?)";
+                "JOIN player_stats ps_opp ON ps.match_id = ps_opp.match_id " +
+                "WHERE ps.player_id = ? AND (m.team1_id = ? OR m.team2_id = ?) " +
+                "GROUP BY ps.match_id, ps.wickets";
 
         try {
             stmt = conn.prepareStatement(query);
-            stmt.setInt(1, Integer.parseInt(teamId));
+            stmt.setString(1, teamId);
             stmt.setInt(2, playerId);
             stmt.setString(3, teamId);
             stmt.setString(4, teamId);
@@ -136,30 +136,31 @@ public class PlayerWicketsServlet extends HttpServlet {
 
             while (rs.next()) {
                 int matchWickets = rs.getInt("wickets");
-                int matchBalls = rs.getInt("balls");
+                int matchBalls = rs.getInt("opponent_balls");
+                int thisMatchBalls = 0;
 
                 totalWickets += matchWickets;
-
                 if (matchBalls <= 66) {
                     if (playerIndex * 6 <= matchBalls) {
-                        totalBallsBowled += 6;
+                        thisMatchBalls += 6;
                     } else if ((playerIndex - 1) * 6 < matchBalls) {
-                        totalBallsBowled += matchBalls - (playerIndex - 1) * 6;
+                        thisMatchBalls += matchBalls - (playerIndex - 1) * 6;
                     }
                 } else {
-                    totalBallsBowled += 6;
+                    thisMatchBalls += 6;
                     int remainingBalls = matchBalls - 66;
                     if (playerIndex <= 9) {
                         if (playerIndex * 6 <= remainingBalls) {
-                            totalBallsBowled += 6;
+                            thisMatchBalls += 6;
                         } else if ((playerIndex - 1) * 6 < remainingBalls) {
-                            totalBallsBowled += remainingBalls - (playerIndex - 1) * 6;
+                            thisMatchBalls += remainingBalls - (playerIndex - 1) * 6;
                         }
                     }
                 }
 
-                if (totalBallsBowled > 0) {
+                if (thisMatchBalls > 0) {
                     matchesBowled++;
+                    totalBallsBowled += thisMatchBalls;
                 }
             }
 

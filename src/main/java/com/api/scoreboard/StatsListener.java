@@ -18,22 +18,6 @@ public class StatsListener {
     private static final Map<String, CopyOnWriteArrayList<String>> matchSessions = new HashMap<>();
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-//    public static void addSession(String matchId, Session session) {
-//        System.out.println("Adding session: " + session.getId());
-//        System.out.println("For match: " + matchId);
-//        sessions.put(session.getId(), session);
-//        matchSessions.putIfAbsent(matchId, new CopyOnWriteArrayList<>());
-//        matchSessions.get(matchId).add(session.getId());
-//
-//        String matchStats = fetchMatchStatsFromDatabase(matchId);
-//        System.out.println("Sending stats: " + matchStats);
-//        try {
-//            session.getBasicRemote().sendText(matchStats);
-//        } catch (IOException e) {
-//            System.out.println("Error sending stats: " + e.getMessage());
-//        }
-//    }
-
     public static void removeSession(String matchId, Session session) {
         sessions.remove(session.getId());
         matchSessions.getOrDefault(matchId, new CopyOnWriteArrayList<>()).remove(session.getId());
@@ -44,7 +28,7 @@ public class StatsListener {
     }
 
     public static void fireStatsRemove(String matchId) {
-        System.out.println("Match completed: " + matchId);
+        System.out.println("Remove session with matchId: " + matchId);
         System.out.println(sessions);
         System.out.println(matchSessions);
         if (matchSessions.get(matchId) != null) matchSessions.get(matchId).forEach(System.out::println);
@@ -97,6 +81,13 @@ public class StatsListener {
         matchSessions.get(matchId).add(session.getId());
 
         String matchStats = fetchMatchStatsFromDatabase(matchId);
+        if (matchStats == null) {
+            try {
+                session.close();
+            } catch (IOException e) {
+                System.out.println("Error closing session: " + e.getMessage());
+            }
+        }
         System.out.println("Sending stats: " + matchStats);
         try {
             session.getBasicRemote().sendText(matchStats);
@@ -125,16 +116,16 @@ public class StatsListener {
                 matchStats.put("current_batting", rs.getString("current_batting"));
                 matchStats.put("is_completed", rs.getString("is_completed"));
                 matchStats.put("winner", rs.getString("winner"));
-                matchStats.put("team1_balls", rs.getInt("team1_balls"));
-                matchStats.put("team2_balls", rs.getInt("team2_balls"));
-                matchStats.put("team1_wickets_map", objectMapper.readValue(rs.getString("team1_wickets_map"), List.class));
-                matchStats.put("team2_wickets_map", objectMapper.readValue(rs.getString("team2_wickets_map"), List.class));
+                matchStats.put("active_batsman_index", rs.getInt("active_batsman_index"));
+                matchStats.put("passive_batsman_index", rs.getInt("passive_batsman_index"));
 
-                // Fetch player stats for both teams
-                query = "SELECT ps.player_id, ps.runs, ps.wickets, ps.team_id " +
+                query = "SELECT ps.player_id, ps.runs, ps.wickets, ps.team_id, ps.wicketer_id, ps.balls, " +
+                        "w.name AS wicketer_name " +
                         "FROM player_stats ps " +
                         "JOIN players p ON ps.player_id = p.id " +
+                        "LEFT JOIN players w ON ps.wicketer_id = w.id " +
                         "WHERE ps.match_id = ? AND ps.team_id IN (?, ?)";
+
                 stmt = conn.prepareStatement(query);
                 stmt.setString(1, matchId);
                 stmt.setInt(2, team1Id);
@@ -145,19 +136,29 @@ public class StatsListener {
                 Map<Integer, Integer> team2Runs = new HashMap<>();
                 Map<Integer, Integer> team1Wickets = new HashMap<>();
                 Map<Integer, Integer> team2Wickets = new HashMap<>();
+                int team1_balls = 0;
+                int team2_balls = 0;
+                List<String> team1WicketsMap = new ArrayList<>();
+                List<String> team2WicketsMap = new ArrayList<>();
 
                 while (rs.next()) {
                     int playerId = rs.getInt("player_id");
                     int runs = rs.getInt("runs");
+                    int balls = rs.getInt("balls");
                     int wickets = rs.getInt("wickets");
                     int teamId = rs.getInt("team_id");
+                    String wicketerName = rs.getString("wicketer_name");
 
                     if (teamId == team1Id) {
                         team1Runs.put(playerId, runs);
                         team1Wickets.put(playerId, wickets);
+                        team1_balls += balls;
+                        team1WicketsMap.add(wicketerName);
                     } else if (teamId == team2Id) {
                         team2Runs.put(playerId, runs);
                         team2Wickets.put(playerId, wickets);
+                        team2_balls += balls;
+                        team2WicketsMap.add(wicketerName);
                     }
                 }
 
@@ -169,6 +170,10 @@ public class StatsListener {
                 matchStats.put("team2_runs", team2Runs);
                 matchStats.put("team1_outs", team1Wickets);
                 matchStats.put("team2_outs", team2Wickets);
+                matchStats.put("team1_balls", team1_balls);
+                matchStats.put("team2_balls", team2_balls);
+                matchStats.put("team1_wickets_map", team1WicketsMap);
+                matchStats.put("team2_wickets_map", team2WicketsMap);
             }
         } catch (Exception e) {
             System.out.println("Error fetching match stats: " + e.getMessage());
@@ -186,7 +191,7 @@ public class StatsListener {
             return objectMapper.writeValueAsString(matchStats);
         } catch (JsonProcessingException e) {
             System.out.println("Error converting to JSON: " + e.getMessage());
-            return "{}";
+            return null;
         }
     }
 }
