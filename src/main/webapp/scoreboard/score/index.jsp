@@ -56,6 +56,7 @@
 
             socket.onopen = function () {
                 console.log('Connected to the server');
+                document.getElementById("result").innerText = "Live Connected";
             };
 
             socket.onmessage = function (event) {
@@ -72,13 +73,17 @@
                         document.getElementById("match-result").textContent = `${team1Players[data.active_batsman_index-1]} is batting\n${team1Players[data.passive_batsman_index-1]} is waiting`;
                         document.getElementById("team1stats").style.backgroundColor = "aliceblue";
                         document.getElementById("team2stats").style.backgroundColor = "white";
-                        document.getElementById("bowler1").textContent = `Bowler: ${getBowlerName(data.team1_balls)}`;
+                        const bowlerName = getBowlerName(data.team1_balls);
+                        document.getElementById("bowler1").textContent = `Bowler: ${bowlerName}`;
+                        updateWicketsTable(data, bowlerName);
                         document.getElementById("bowler2").textContent = "";
                     } else {
                         document.getElementById("match-result").textContent = `${team2Players[data.active_batsman_index-1]} is batting\n${team2Players[data.passive_batsman_index-1]} is waiting`;
                         document.getElementById("team2stats").style.backgroundColor = "aliceblue";
                         document.getElementById("team1stats").style.backgroundColor = "white";
-                        document.getElementById("bowler2").textContent = `Bowler: ${getBowlerName(data.team2_balls)}`;
+                        const bowlerName = getBowlerName(data.team2_balls);
+                        document.getElementById("bowler2").textContent = `Bowler: ${bowlerName}`;
+                        updateWicketsTable(data, bowlerName);
                         document.getElementById("bowler1").textContent = "";
                     }
                 } else {
@@ -120,6 +125,7 @@
 
         function getBowlerName(balls) {
             let bowlerIndex;
+            if (balls === 0) return current_batting === "team1" ? team2Players[0] : team1Players[0];
             if (balls <= 66) {
                 let over = Math.floor(balls / 6);
                 let ball = balls % 6;
@@ -141,16 +147,20 @@
         function updateScoreTable(data) {
             const playerRow1 = document.getElementById("playerRow1");
             const runsRow1 = document.getElementById("runsRow1");
+            const ballsRow1 = document.getElementById("ballsRow1");
             const outRow1 = document.getElementById("outRow1");
             const playerRow2 = document.getElementById("playerRow2");
             const runsRow2 = document.getElementById("runsRow2");
+            const ballsRow2 = document.getElementById("ballsRow2");
             const outRow2 = document.getElementById("outRow2");
 
             playerRow1.innerHTML = "<th>Players</th>";
             runsRow1.innerHTML = "<td>Runs</td>";
+            ballsRow1.innerHTML = "<td>Balls</td>";
             outRow1.innerHTML = "<td>Wicket Taker</td>";
             playerRow2.innerHTML = "<th>Players</th>";
             runsRow2.innerHTML = "<td>Runs</td>";
+            ballsRow2.innerHTML = "<td>Balls</td>";
             outRow2.innerHTML = "<td>Wicket Taker</td>";
 
             const team1_runs = Object.values(data.team1_runs);
@@ -158,7 +168,17 @@
 
             for (let i = 0; i < team1Players.length; i++) {
                 const playerCell = document.createElement("th");
-                playerCell.textContent = team1Players[i] || "Player " + (i + 1);
+                playerCell.innerHTML = team1Players[i] || "Player " + (i + 1);
+
+                // Add green dot for active batsman and grey dot for passive batsman
+                if (data.current_batting === "team1") {
+                    if (i === data.active_batsman_index - 1) {
+                        playerCell.innerHTML += ' <span class="green-dot"></span>';
+                    } else if (i === data.passive_batsman_index - 1) {
+                        playerCell.innerHTML += ' <span class="grey-dot"></span>';
+                    }
+                }
+
                 playerRow1.appendChild(playerCell);
 
                 const runsCell = document.createElement("td");
@@ -172,7 +192,17 @@
 
             for (let i = 0; i < team2Players.length; i++) {
                 const playerCell = document.createElement("th");
-                playerCell.textContent = team2Players[i] || "Player " + (i + 1);
+                playerCell.innerHTML = team2Players[i] || "Player " + (i + 1);
+
+                // Add green dot for active batsman and grey dot for passive batsman
+                if (data.current_batting === "team2") {
+                    if (i === data.active_batsman_index - 1) {
+                        playerCell.innerHTML += ' <span class="green-dot"></span>';
+                    } else if (i === data.passive_batsman_index - 1) {
+                        playerCell.innerHTML += ' <span class="grey-dot"></span>';
+                    }
+                }
+
                 playerRow2.appendChild(playerCell);
 
                 const runsCell = document.createElement("td");
@@ -237,7 +267,7 @@
             }
         }
 
-        function updateWicketsTable(data) {
+        function updateWicketsTable(data, bowlerName) {
             const playeroutRow1 = document.getElementById("playeroutRow1");
             const ballsRow1 = document.getElementById("ballsThrownRow1");
             const wicketsRow1 = document.getElementById("wicketsRow1");
@@ -260,6 +290,11 @@
             for (let i = 0; i < team1Players.length; i++) {
                 const playerCell = document.createElement("th");
                 playerCell.textContent = team1Players[i] || "Player " + (i + 1);
+
+                if (data.current_batting === "team2" && team1Players[i] === bowlerName) {
+                    playerCell.innerHTML += ' <span class="red-dot"></span>';
+                }
+
                 playeroutRow1.appendChild(playerCell);
 
                 const ballsCell = document.createElement("td");
@@ -289,10 +324,15 @@
             for (let i = 0; i < team2Players.length; i++) {
                 const playerCell = document.createElement("th");
                 playerCell.textContent = team2Players[i] || "Player " + (i + 1);
+
+                if (data.current_batting === "team1" && team2Players[i] === bowlerName) {
+                    playerCell.innerHTML += ' <span class="red-dot"></span>';
+                }
+
                 playeroutRow2.appendChild(playerCell);
 
                 const ballsCell = document.createElement("td");
-                const playerIndex = i + 1
+                const playerIndex = i + 1;
                 let balls = 0;
                 if (team1_balls <= 66) {
                     if (playerIndex * 6 <= team1_balls) {
@@ -441,6 +481,30 @@
         table td {
             font-size: 14px;
         }
+
+        .green-dot {
+            height: 10px;
+            width: 10px;
+            background-color: limegreen;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .grey-dot {
+            height: 10px;
+            width: 10px;
+            background-color: grey;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .red-dot {
+            height: 10px;
+            width: 10px;
+            background-color: red;
+            border-radius: 50%;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -451,15 +515,17 @@
     <div id="team1stats" class="team-stats">
         <label id="team1"></label>
         <h1 id="team1-stats" style="display: flex; justify-content: space-between;margin:0"></h1>
+        <br>
+        <hr>
+        <br>
         <div id="bowler1"></div>
-        <br/>
-        <br/>
     </div>
     <div id="team2stats" class="team-stats">
         <label id="team2"></label>
         <h1 id="team2-stats" style="display: flex; justify-content: space-between;margin:0"></h1>
-        <br/>
-        <br/>
+        <br>
+        <hr>
+        <br>
         <div id="bowler2"></div>
     </div>
 </div>

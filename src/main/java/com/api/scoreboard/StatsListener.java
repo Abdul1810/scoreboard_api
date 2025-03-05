@@ -81,7 +81,7 @@ public class StatsListener {
         matchSessions.get(matchId).add(session.getId());
 
         String matchStats = fetchMatchStatsFromDatabase(matchId);
-        if (matchStats == null) {
+        if (matchStats == null || matchStats.isEmpty()) {
             try {
                 session.close();
             } catch (IOException e) {
@@ -122,7 +122,7 @@ public class StatsListener {
                 query = "SELECT ps.player_id, ps.runs, ps.wickets, ps.team_id, ps.wicketer_id, ps.balls, " +
                         "w.name AS wicketer_name " +
                         "FROM player_stats ps " +
-                        "JOIN players p ON ps.player_id = p.id " +
+                        "JOIN team_players tp ON ps.player_id = tp.player_id " +
                         "LEFT JOIN players w ON ps.wicketer_id = w.id " +
                         "WHERE ps.match_id = ? AND ps.team_id IN (?, ?)";
 

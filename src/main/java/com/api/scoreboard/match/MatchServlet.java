@@ -48,10 +48,8 @@ public class MatchServlet extends HttpServlet {
                     match.put("current_batting", rs.getString("current_batting"));
                     match.put("active_batsman_index", rs.getInt("active_batsman_index"));
                     match.put("passive_batsman_index", rs.getInt("passive_batsman_index"));
-//                    match.put("team1_balls", rs.getInt("team1_balls"));
-//                    match.put("team2_balls", rs.getInt("team2_balls"));
 
-                    query = "SELECT t.name, p.name as player_name FROM teams t JOIN players p ON t.id = p.team_id WHERE t.id = ?";
+                    query = "SELECT t.name, p.name as player_name FROM teams t JOIN team_players tp ON t.id = tp.team_id JOIN players p ON tp.player_id = p.id WHERE t.id = ?";
                     stmt = conn.prepareStatement(query);
 
                     stmt.setInt(1, matchIds.get("team1_id"));
@@ -167,7 +165,7 @@ public class MatchServlet extends HttpServlet {
 
                 // Insert default player stats for both teams
                 String insertPlayerStatsQuery = "INSERT INTO player_stats (player_id, match_id, team_id, runs, wickets) " +
-                        "SELECT id, ?, ?, 0, 0 FROM players WHERE team_id = ?";
+                        "SELECT tp.player_id, ?, ?, 0, 0 FROM team_players tp WHERE tp.team_id = ?";
 
                 PreparedStatement insertPlayerStatsStmt = conn.prepareStatement(insertPlayerStatsQuery);
 

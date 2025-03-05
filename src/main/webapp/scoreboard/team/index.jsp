@@ -161,7 +161,7 @@
                                 </div>
                                 <div class="actions">
                                     <a class="open-btn" href="view.jsp?id=${team.id}">View</a>
-                                    <br/>
+                                    <br>
                                     <button class="delete-btn" onclick="deleteTeam('${team.id}')">Delete</button>
                                 </div>
                             `;

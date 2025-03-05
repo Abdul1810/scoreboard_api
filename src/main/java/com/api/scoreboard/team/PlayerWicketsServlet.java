@@ -89,14 +89,14 @@ public class PlayerWicketsServlet extends HttpServlet {
     private int getPlayerId(Connection conn, String teamId, String player) throws Exception {
         PreparedStatement stmt = null;
         ResultSet rs = null;
-        String query = "SELECT id FROM players WHERE name = ? AND team_id = ?";
+        String query = "SELECT tp.player_id FROM team_players tp JOIN players p ON tp.player_id = p.id WHERE p.name = ? AND tp.team_id = ?";
         try {
             stmt = conn.prepareStatement(query);
             stmt.setString(1, player);
             stmt.setString(2, teamId);
             rs = stmt.executeQuery();
             if (rs.next()) {
-                return rs.getInt("id");
+                return rs.getInt("player_id");
             }
         } finally {
             if (rs != null) {
@@ -182,17 +182,14 @@ public class PlayerWicketsServlet extends HttpServlet {
     private int getPlayerIndex(Connection conn, String teamId, int playerId) throws Exception {
         PreparedStatement stmt = null;
         ResultSet rs = null;
-        String query = "SELECT id FROM players WHERE team_id = ?";
+        String query = "SELECT player_position FROM team_players WHERE team_id = ? AND player_id = ?";
         try {
             stmt = conn.prepareStatement(query);
             stmt.setString(1, teamId);
+            stmt.setInt(2, playerId);
             rs = stmt.executeQuery();
-            int index = 1;
-            while (rs.next()) {
-                if (rs.getInt("id") == playerId) {
-                    return index;
-                }
-                index++;
+            if (rs.next()) {
+                return rs.getInt("player_position");
             }
         } finally {
             if (rs != null) {

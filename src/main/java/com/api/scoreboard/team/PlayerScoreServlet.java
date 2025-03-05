@@ -43,8 +43,9 @@ public class PlayerScoreServlet extends HttpServlet {
         try {
             conn = Database.getConnection();
 
-            // Fetch player ID using player name
-            stmt = conn.prepareStatement("SELECT id FROM players WHERE name = ? AND team_id = ?");
+            // Fetch player ID using player name and team ID from team_players table
+            String playerQuery = "SELECT tp.player_id FROM team_players tp JOIN players p ON tp.player_id = p.id WHERE p.name = ? AND tp.team_id = ?";
+            stmt = conn.prepareStatement(playerQuery);
             stmt.setString(1, player);
             stmt.setString(2, teamId);
             rs = stmt.executeQuery();
@@ -60,7 +61,7 @@ public class PlayerScoreServlet extends HttpServlet {
                 return;
             }
 
-            playerId = rs.getInt("id");
+            playerId = rs.getInt("player_id");
 
             String matchQuery =
                     "SELECT ps1.match_id, ps1.runs, ps1.balls, SUM(ps2.wickets) AS wickets " +

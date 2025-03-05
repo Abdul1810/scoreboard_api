@@ -113,6 +113,7 @@
 
             socket.onopen = function () {
                 console.log("WebSocket Connection Established");
+                document.getElementById("result").innerText = "Live updates enabled";
             };
 
             socket.onclose = function () {
