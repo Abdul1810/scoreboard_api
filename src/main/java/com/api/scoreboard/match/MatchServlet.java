@@ -1,6 +1,7 @@
 package com.api.scoreboard.match;
 
 import com.api.scoreboard.StatsListener;
+import com.api.scoreboard.commons.Match;
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.annotation.WebServlet;
@@ -26,6 +27,7 @@ public class MatchServlet extends HttpServlet {
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
+        ResultSet rs1 = null;
 
         try {
             conn = Database.getConnection();
@@ -36,6 +38,33 @@ public class MatchServlet extends HttpServlet {
                 rs = stmt.executeQuery();
 
                 if (rs.next()) {
+                    query = "    SELECT m.id, m.team1_id, m.team2_id, m.is_completed" +
+                            "    FROM matches m" +
+                            "    JOIN tournament_matches tm ON m.id = tm.match_id" +
+                            "    WHERE tm.tournament_id = (" +
+                            "        SELECT tournament_id FROM tournament_matches WHERE match_id = ?" +
+                            "    ) " +
+                            "    AND m.is_completed = 'false'";
+                    stmt = conn.prepareStatement(query);
+                    stmt.setInt(1, rs.getInt("id"));
+                    rs1 = stmt.executeQuery();
+                    List<Integer> tournamentMatches = new ArrayList<>();
+                    while (rs1.next()) {
+                        tournamentMatches.add(rs1.getInt("id"));
+                    }
+
+                    if (!tournamentMatches.isEmpty()) {
+                        tournamentMatches.sort(Integer::compareTo);
+                        System.out.println(tournamentMatches.size());
+                        tournamentMatches.forEach(System.out::println);
+                        if (tournamentMatches.get(0) != rs.getInt("id")) {
+                            response.setStatus(403);
+                            jsonResponse.put("message", "Match cannot be accessed");
+                            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+                            return;
+                        }
+                    }
+
                     Map<String, Integer> matchIds = new HashMap<>();
                     matchIds.put("id", rs.getInt("id"));
                     matchIds.put("team1_id", rs.getInt("team1_id"));
@@ -124,6 +153,7 @@ public class MatchServlet extends HttpServlet {
         } finally {
             try {
                 if (rs != null) rs.close();
+                if (rs1 != null) rs1.close();
                 if (stmt != null) stmt.close();
                 if (conn != null) conn.close();
             } catch (SQLException e) {
@@ -151,41 +181,16 @@ public class MatchServlet extends HttpServlet {
                 return;
             }
 
-            // Insert into matches table
-            String insertMatchQuery = "INSERT INTO matches (team1_id, team2_id, is_completed, winner, current_batting) VALUES (?, ?, 'false', 'none', 'team1')";
-            insertMatchStmt = conn.prepareStatement(insertMatchQuery, Statement.RETURN_GENERATED_KEYS);
-            insertMatchStmt.setInt(1, Integer.parseInt(team1Id));
-            insertMatchStmt.setInt(2, Integer.parseInt(team2Id));
-            insertMatchStmt.executeUpdate();
-
-            rs = insertMatchStmt.getGeneratedKeys();
-            if (rs.next()) {
-                int matchId = rs.getInt(1);
-                System.out.println("Going to insert player stats for match ID: " + matchId);
-
-                // Insert default player stats for both teams
-                String insertPlayerStatsQuery = "INSERT INTO player_stats (player_id, match_id, team_id, runs, wickets) " +
-                        "SELECT tp.player_id, ?, ?, 0, 0 FROM team_players tp WHERE tp.team_id = ?";
-
-                PreparedStatement insertPlayerStatsStmt = conn.prepareStatement(insertPlayerStatsQuery);
-
-                // Insert player stats for team 1
-                insertPlayerStatsStmt.setInt(1, matchId);
-                insertPlayerStatsStmt.setInt(2, Integer.parseInt(team1Id));
-                insertPlayerStatsStmt.setInt(3, Integer.parseInt(team1Id));
-                insertPlayerStatsStmt.executeUpdate();
-
-                // Insert player stats for team 2
-                insertPlayerStatsStmt.setInt(2, Integer.parseInt(team2Id));
-                insertPlayerStatsStmt.setInt(3, Integer.parseInt(team2Id));
-                insertPlayerStatsStmt.executeUpdate();
-            }
-
+            Match.create(conn, Integer.parseInt(team1Id), Integer.parseInt(team2Id));
             MatchListener.fireMatchesUpdate();
             jsonResponse.put("message", "success");
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } catch (SQLException e) {
             jsonResponse.put("message", "Database error: " + e.getMessage());
+            response.setStatus(500);
+            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+        } catch (Exception e) {
+            jsonResponse.put("message", "Error creating match: " + e.getMessage());
             response.setStatus(500);
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } finally {

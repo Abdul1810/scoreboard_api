@@ -81,9 +81,9 @@ public class StatsListener {
         matchSessions.get(matchId).add(session.getId());
 
         String matchStats = fetchMatchStatsFromDatabase(matchId);
-        if (matchStats == null || matchStats.isEmpty()) {
+        if (matchStats == null || matchStats.isEmpty() || matchStats.equals("{}")) {
             try {
-                session.close();
+                session.getBasicRemote().sendText("not-found");
             } catch (IOException e) {
                 System.out.println("Error closing session: " + e.getMessage());
             }

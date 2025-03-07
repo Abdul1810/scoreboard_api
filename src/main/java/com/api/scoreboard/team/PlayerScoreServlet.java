@@ -95,16 +95,11 @@ public class PlayerScoreServlet extends HttpServlet {
                     matchesPlayed++;
                 }
             }
-            if (matchesPlayed == 0) {
-                response.setStatus(404);
-                jsonResponse.put("message", player + " has not batted in any matches");
-            } else {
-                jsonResponse.put("player", player);
-                jsonResponse.put("team_id", teamId);
-                jsonResponse.put("total_score", totalRuns);
-                jsonResponse.put("matches_played", matchesPlayed);
-                jsonResponse.put("total_balls", totalBalls);
-            }
+            jsonResponse.put("player", player);
+            jsonResponse.put("team_id", teamId);
+            jsonResponse.put("total_score", totalRuns);
+            jsonResponse.put("matches_played", matchesPlayed);
+            jsonResponse.put("total_balls", totalBalls);
 
             try {
                 response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));

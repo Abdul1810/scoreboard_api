@@ -2,7 +2,6 @@
 <html>
 <head>
     <title>Loading...</title>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.4.0/dist/confetti.browser.min.js"></script>
     <script>
         let socket;
         let current_batting = "team1";
@@ -101,20 +100,18 @@
                         return;
                     }
                     document.getElementById("match-result").textContent = data.winner !== 'Tie' ? data.winner + " won the match" : "Tie";
+                    updateWicketsTable(data, "");
                     if (data.winner === "team1") {
                         document.getElementById("team1stats").style.backgroundColor = "lightgreen";
                         document.getElementById("team2stats").style.backgroundColor = "white";
                         if (!document.getElementById("team1").textContent.includes("Winner")) {
                             document.getElementById("team1").textContent += " (🎉 Winner)";
-                            triggerConfetti("team1stats");
                         }
-                        triggerConfetti("team1stats");
                     } else if (data.winner === "team2") {
                         document.getElementById("team2stats").style.backgroundColor = "lightgreen";
                         document.getElementById("team1stats").style.backgroundColor = "white";
                         if (!document.getElementById("team2").textContent.includes("Winner")) {
                             document.getElementById("team2").textContent += " (🎉 Winner)";
-                            triggerConfetti("team2stats");
                         }
                     } else {
                         document.getElementById("team1stats").style.backgroundColor = "peachpuff";
@@ -427,22 +424,6 @@
                     wicketsRow2.appendChild(outCell);
                 }
             }
-        }
-
-        function triggerConfetti(containerId) {
-            const container = document.getElementById(containerId);
-            const rect = container.getBoundingClientRect();
-            const confettiSettings = {
-                target: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, radius: rect.width / 2 },
-                max: 200,
-                props: ['circle', 'square', 'triangle', 'line'],
-                colors: [[165, 104, 246], [230, 61, 135], [0, 199, 228], [253, 214, 126]],
-                clock: 25,
-                rotate: true,
-                start_from_edge: true,
-                respawn: false,
-            };
-            confetti(confettiSettings);
         }
     </script>
     <style>

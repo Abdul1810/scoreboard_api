@@ -144,3 +144,12 @@
 </script>
 </body>
 </html>
+
+<%--import Ember from 'ember';--%>
+
+<%--export default Ember.Component.extend({--%>
+<%--didInsertElement() {--%>
+<%--this._super(...arguments);--%>
+<%--document.title = this.get('title');--%>
+<%--}--%>
+<%--});--%>

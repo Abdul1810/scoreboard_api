@@ -1,5 +1,7 @@
 package com.api.scoreboard;
 
+import com.api.scoreboard.commons.Match;
+import com.api.scoreboard.match.MatchListener;
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.annotation.WebServlet;
@@ -153,31 +155,24 @@ public class StatsServlet extends HttpServlet {
             int currentPlayerIndex = currentPlayerId;
             currentPlayerId = "team1".equals(currentBattingTeam) ? (int) team1Scores.keySet().toArray()[currentPlayerId - 1] : (int) team2Scores.keySet().toArray()[currentPlayerId - 1];
             int currentPlayerOldScore = "team1".equals(currentBattingTeam) ? team1Scores.get(currentPlayerId) : team2Scores.get(currentPlayerId);
-            if ("team1".equals(currentBattingTeam)) {
-                team1_balls++;
-                team1BallsMap.set(activeBatsmanIndex - 1, team1BallsMap.get(activeBatsmanIndex - 1) + 1);
-                if (team1_balls % 6 == 0) {
-                    int temp = activeBatsmanIndex;
-                    activeBatsmanIndex = passiveBatsmanIndex;
-                    passiveBatsmanIndex = temp;
-                }
-            } else {
-                team2_balls++;
-                team2BallsMap.set(activeBatsmanIndex - 1, team2BallsMap.get(activeBatsmanIndex - 1) + 1);
-                if (team2_balls % 6 == 0) {
-                    int temp = activeBatsmanIndex;
-                    activeBatsmanIndex = passiveBatsmanIndex;
-                    passiveBatsmanIndex = temp;
-                }
-            }
+
 
             if (updateRequest.equals("out")) {
+                if ("team1".equals(currentBattingTeam)) {
+                    team1_balls++;
+                    team1BallsMap.set(activeBatsmanIndex - 1, team1BallsMap.get(activeBatsmanIndex - 1) + 1);
+                } else {
+                    team2_balls++;
+                    team2BallsMap.set(activeBatsmanIndex - 1, team2BallsMap.get(activeBatsmanIndex - 1) + 1);
+                }
                 if ("team1".equals(currentBattingTeam)) {
                     int bowlerIndex = updateWicketTaker(team1_balls);
                     if (bowlerIndex != -1) {
                         int bowlerId = (int) team2Wickets.keySet().toArray()[bowlerIndex - 1];
                         wicketer_id = bowlerId;
-                        team2Wickets.put(bowlerId, team2Wickets.getOrDefault(bowlerIndex, 0) + 1);
+                        System.out.println("bowlerId: " + bowlerId);
+                        System.out.println("bowlerIndex: " + bowlerIndex);
+                        team2Wickets.put(bowlerId, team2Wickets.getOrDefault(bowlerId, 0) + 1);
                         team1WicketsMap.set(activeBatsmanIndex - 1, team2Players.get(bowlerId));
                         for (int i = 0; i < team1WicketsMap.size(); i++) {
                             if (team1WicketsMap.get(i) == null && i != passiveBatsmanIndex - 1) {
@@ -191,7 +186,7 @@ public class StatsServlet extends HttpServlet {
                     if (bowlerIndex != -1) {
                         int bowlerId = (int) team1Wickets.keySet().toArray()[bowlerIndex - 1];
                         wicketer_id = bowlerId;
-                        team1Wickets.put(bowlerId, team1Wickets.getOrDefault(bowlerIndex, 0) + 1);
+                        team1Wickets.put(bowlerId, team1Wickets.getOrDefault(bowlerId, 0) + 1);
                         team2WicketsMap.set(activeBatsmanIndex - 1, team1Players.get(bowlerId));
                         for (int i = 0; i < team2WicketsMap.size(); i++) {
                             if (team2WicketsMap.get(i) == null && i != passiveBatsmanIndex - 1) {
@@ -201,7 +196,34 @@ public class StatsServlet extends HttpServlet {
                         }
                     }
                 }
+
+                if (currentBattingTeam.equals("team1") && team1_balls % 6 == 0) {
+                    int temp = activeBatsmanIndex;
+                    activeBatsmanIndex = passiveBatsmanIndex;
+                    passiveBatsmanIndex = temp;
+                } else if (currentBattingTeam.equals("team2") && team2_balls % 6 == 0) {
+                    int temp = activeBatsmanIndex;
+                    activeBatsmanIndex = passiveBatsmanIndex;
+                    passiveBatsmanIndex = temp;
+                }
             } else {
+                if ("team1".equals(currentBattingTeam)) {
+                    team1_balls++;
+                    team1BallsMap.set(activeBatsmanIndex - 1, team1BallsMap.get(activeBatsmanIndex - 1) + 1);
+                    if (team1_balls % 6 == 0) {
+                        int temp = activeBatsmanIndex;
+                        activeBatsmanIndex = passiveBatsmanIndex;
+                        passiveBatsmanIndex = temp;
+                    }
+                } else {
+                    team2_balls++;
+                    team2BallsMap.set(activeBatsmanIndex - 1, team2BallsMap.get(activeBatsmanIndex - 1) + 1);
+                    if (team2_balls % 6 == 0) {
+                        int temp = activeBatsmanIndex;
+                        activeBatsmanIndex = passiveBatsmanIndex;
+                        passiveBatsmanIndex = temp;
+                    }
+                }
                 if ("team1".equals(currentBattingTeam)) {
                     team1Scores.put(currentPlayerId, Integer.parseInt(updateRequest) + currentPlayerOldScore);
                     if ("1".equals(updateRequest)) {
@@ -222,6 +244,82 @@ public class StatsServlet extends HttpServlet {
             matchStats.put("team1_wickets", String.valueOf(team2Wickets.values().stream().mapToInt(Integer::intValue).sum()));
             matchStats.put("team2_wickets", String.valueOf(team1Wickets.values().stream().mapToInt(Integer::intValue).sum()));
 
+            /*
+                CREATE TABLE matches
+                (
+                    id                    INT(11)                                NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    team1_id              INT(11)                                NOT NULL,
+                    team2_id              INT(11)                                NOT NULL,
+                    is_completed          ENUM ('true', 'false')                 NOT NULL DEFAULT 'false',
+                    winner                ENUM ('team1', 'team2', 'none', 'tie') NOT NULL DEFAULT 'none',
+                    current_batting       ENUM ('team1', 'team2')                NOT NULL DEFAULT 'team1',
+                    active_batsman_index  INT(11)                                NOT NULL DEFAULT 1,
+                    passive_batsman_index INT(11)                                NOT NULL DEFAULT 2,
+                    created_at            DATETIME                               NOT NULL DEFAULT current_timestamp(),
+                    FOREIGN KEY (team1_id) REFERENCES teams (id) ON DELETE CASCADE,
+                    FOREIGN KEY (team2_id) REFERENCES teams (id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE player_stats
+                (
+                    id          INT(11)  NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    player_id   INT(11)  NOT NULL,
+                    match_id    INT(11)  NOT NULL,
+                    team_id     INT(11)  NOT NULL,
+                    runs        INT(11)           DEFAULT 0,
+                    wickets     INT(11)           DEFAULT 0,
+                    balls       INT(11)           DEFAULT 0,
+                    wicketer_id INT(11)  NULL,
+                    created_at  DATETIME NOT NULL DEFAULT current_timestamp(),
+                    FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE,
+                    FOREIGN KEY (match_id) REFERENCES matches (id) ON DELETE CASCADE,
+                    FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
+                    FOREIGN KEY (wicketer_id) REFERENCES players (id) ON DELETE SET NULL
+                );
+
+                CREATE TABLE tournaments
+                (
+                    id         INT(11)      NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    name       VARCHAR(255) NOT NULL UNIQUE,
+                    status     ENUM ('ongoing', 'completed') NOT NULL DEFAULT 'ongoing',
+                    winner_id  INT(11)      NULL,
+                    created_at DATETIME     NOT NULL DEFAULT current_timestamp()
+                );
+
+                CREATE TABLE tournament_teams
+                (
+                    id           INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    tournament_id INT(11) NOT NULL,
+                    team_id       INT(11) NOT NULL,
+                    status       ENUM ('active', 'eliminated') NOT NULL DEFAULT 'active',
+                    created_at    DATETIME NOT NULL DEFAULT current_timestamp(),
+                    FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE CASCADE,
+                    FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
+                    UNIQUE (tournament_id, team_id)
+                );
+
+                CREATE TABLE tournament_matches
+                (
+                    id         INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    tournament_id INT(11) NOT NULL,
+                    match_id   INT(11) NOT NULL,
+                    created_at DATETIME NOT NULL DEFAULT current_timestamp(),
+                    FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE CASCADE,
+                    FOREIGN KEY (match_id) REFERENCES matches (id) ON DELETE CASCADE,
+                    UNIQUE (tournament_id, match_id)
+                );
+
+                CREATE TABLE tournament_winners
+                (
+                    id           INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    tournament_id INT(11) NOT NULL,
+                    team_id       INT(11) NOT NULL,
+                    created_at    DATETIME NOT NULL DEFAULT current_timestamp(),
+                    FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE CASCADE,
+                    FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
+                    UNIQUE (tournament_id, team_id)
+                );
+             */
             if ("team1".equals(currentBattingTeam)) {
                 if (team2Wickets.values().stream().mapToInt(Integer::intValue).sum() == 10 || team1_balls == 120) {
                     matchStats.put("current_batting", "team2");
@@ -232,15 +330,14 @@ public class StatsServlet extends HttpServlet {
                 int team1Score = team1Scores.values().stream().mapToInt(Integer::intValue).sum();
                 int team2Score = team2Scores.values().stream().mapToInt(Integer::intValue).sum();
                 if (team2Score > team1Score) {
+                    updateTournament(team1Id, team2Id, Integer.parseInt(matchId));
                     matchStats.put("winner", "team2");
                     matchStats.put("is_completed", "true");
                 }
                 if (team2_balls == 120 || team1Wickets.values().stream().mapToInt(Integer::intValue).sum() == 10) {
                     if (team1Score > team2Score) {
+                        updateTournament(team2Id, team1Id, Integer.parseInt(matchId));
                         matchStats.put("winner", "team1");
-                        matchStats.put("is_completed", "true");
-                    } else if (team1Score < team2Score) {
-                        matchStats.put("winner", "team2");
                         matchStats.put("is_completed", "true");
                     } else {
                         matchStats.put("winner", "tie");
@@ -248,6 +345,21 @@ public class StatsServlet extends HttpServlet {
                     }
                 }
             }
+
+            System.out.println("matchStats: " + matchStats);
+            System.out.println("team1Scores: " + team1Scores);
+            System.out.println("team2Scores: " + team2Scores);
+            System.out.println("team1Wickets: " + team1Wickets);
+            System.out.println("team2Wickets: " + team2Wickets);
+            System.out.println("activeBatsmanIndex: " + activeBatsmanIndex);
+            System.out.println("passiveBatsmanIndex: " + passiveBatsmanIndex);
+            System.out.println("wicketer_id: " + wicketer_id);
+            System.out.println("team1_balls: " + team1_balls);
+            System.out.println("team2_balls: " + team2_balls);
+            System.out.println("team1WicketsMap: " + team1WicketsMap);
+            System.out.println("team2WicketsMap: " + team2WicketsMap);
+            System.out.println("team1BallsMap: " + team1BallsMap);
+            System.out.println("team2BallsMap: " + team2BallsMap);
 
             updateMatchStats(matchStats, team1Scores, team2Scores, team1Wickets, team2Wickets, activeBatsmanIndex, passiveBatsmanIndex, wicketer_id, team1BallsMap, team2BallsMap, currentPlayerId);
             Map<String, Object> matchData = new HashMap<>();
@@ -279,6 +391,10 @@ public class StatsServlet extends HttpServlet {
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } catch (SQLException e) {
             jsonResponse.put("message", "Database error: " + e.getMessage());
+            response.setStatus(500);
+            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+        } catch (Exception e) {
+            jsonResponse.put("message", "Error: " + e.getMessage());
             response.setStatus(500);
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } finally {
@@ -391,5 +507,88 @@ public class StatsServlet extends HttpServlet {
         }
 
         return sortedMap;
+    }
+
+    private void updateTournament(int lossingTeamId, int winningTeamId, int matchId) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            conn = Database.getConnection();
+            String query = "SELECT tournament_id FROM tournament_matches WHERE match_id = ?";
+            stmt = conn.prepareStatement(query);
+            stmt.setInt(1, matchId);
+
+            rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                int tournamentId = rs.getInt("tournament_id");
+                query = "SELECT team_id FROM tournament_winners WHERE tournament_id = ?";
+                stmt = conn.prepareStatement(query);
+                stmt.setInt(1, tournamentId);
+
+                rs = stmt.executeQuery();
+
+                if (rs.next()) {
+                    int oldWinnerId = rs.getInt("team_id");
+                    int newMatchId = Match.create(conn, oldWinnerId, winningTeamId);
+                    MatchListener.fireMatchesUpdate();
+                    conn = Database.getConnection();
+                    query = "INSERT INTO tournament_matches (tournament_id, match_id) VALUES (?, ?)";
+                    stmt = conn.prepareStatement(query);
+                    stmt.setInt(1, tournamentId);
+                    stmt.setInt(2, newMatchId);
+                    stmt.executeUpdate();
+
+                    query = "DELETE FROM tournament_winners WHERE tournament_id = ?";
+                    stmt = conn.prepareStatement(query);
+                    stmt.setInt(1, tournamentId);
+                    stmt.executeUpdate();
+
+                    query = "UPDATE tournament_teams SET status = 'eliminated' WHERE tournament_id = ? AND team_id = ?";
+                    stmt = conn.prepareStatement(query);
+                    stmt.setInt(1, tournamentId);
+                    stmt.setInt(2, lossingTeamId);
+                    stmt.executeUpdate();
+                } else {
+                    query = "UPDATE tournament_teams SET status = 'eliminated' WHERE tournament_id = ? AND team_id = ?";
+                    stmt = conn.prepareStatement(query);
+                    stmt.setInt(1, tournamentId);
+                    stmt.setInt(2, lossingTeamId);
+                    stmt.executeUpdate();
+
+                    query = "INSERT INTO tournament_winners (tournament_id, team_id) VALUES (?, ?)";
+                    stmt = conn.prepareStatement(query);
+                    stmt.setInt(1, tournamentId);
+                    stmt.setInt(2, winningTeamId);
+                    stmt.executeUpdate();
+
+                    query = "SELECT COUNT(*) AS total_teams FROM tournament_teams WHERE tournament_id = ? AND status = 'active'";
+                    stmt = conn.prepareStatement(query);
+                    stmt.setInt(1, tournamentId);
+                    rs = stmt.executeQuery();
+
+                    if (rs.next()) {
+                        int totalTeams = rs.getInt("total_teams");
+                        if (totalTeams == 1) {
+                            query = "UPDATE tournaments SET status = 'completed', winner_id = ? WHERE id = ?";
+                            stmt = conn.prepareStatement(query);
+                            stmt.setInt(1, winningTeamId);
+                            stmt.setInt(2, tournamentId);
+                            stmt.executeUpdate();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error checking tournament: " + e.getMessage());
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (stmt != null) stmt.close();
+            } catch (SQLException e) {
+                System.err.println("Error closing resources: " + e.getMessage());
+            }
+        }
     }
 }

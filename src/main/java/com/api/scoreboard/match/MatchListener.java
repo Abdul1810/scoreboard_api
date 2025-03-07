@@ -61,43 +61,35 @@ public class MatchListener {
 
     private static List<Map<String, String>> fetchMatchesFromDatabase() {
         List<Map<String, String>> matches = new ArrayList<>();
-        String query = "SELECT * FROM matches";
+        String query = "SELECT m.id, t1.name AS team1, t2.name AS team2, m.created_at, " +
+                "m.is_completed, m.winner, " +
+                "CASE " +
+                "   WHEN m.winner = 'team1' THEN t1.name " +
+                "   WHEN m.winner = 'team2' THEN t2.name " +
+                "   WHEN m.winner = 'tie' THEN 'Match Tied' " +
+                "   ELSE 'Not decided' " +
+                "END AS winner_name " +
+                "FROM matches m " +
+                "JOIN teams t1 ON m.team1_id = t1.id " +
+                "JOIN teams t2 ON m.team2_id = t2.id";
+
         Connection conn = null;
         PreparedStatement stmt = null;
-        PreparedStatement stmt1 = null;
-        PreparedStatement stmt2 = null;
         ResultSet rs = null;
-        ResultSet rs1 = null;
-        ResultSet rs2 = null;
 
         try {
             conn = Database.getConnection();
             stmt = conn.prepareStatement(query);
             rs = stmt.executeQuery();
+
             while (rs.next()) {
                 Map<String, String> match = new HashMap<>();
                 match.put("id", String.valueOf(rs.getInt("id")));
-
-                conn = Database.getConnection();
-                query = "SELECT * FROM teams WHERE id = ?";
-                stmt1 = conn.prepareStatement(query);
-                stmt1.setInt(1, rs.getInt("team1_id"));
-                rs1 = stmt1.executeQuery();
-
-                if (rs1.next()) {
-                    match.put("team1", rs1.getString("name"));
-                }
-
-                conn = Database.getConnection();
-
-                stmt2 = conn.prepareStatement(query);
-                stmt2.setInt(1, rs.getInt("team2_id"));
-                rs2 = stmt2.executeQuery();
-
-                if (rs2.next()) {
-                    match.put("team2", rs2.getString("name"));
-                }
+                match.put("team1", rs.getString("team1"));
+                match.put("team2", rs.getString("team2"));
                 match.put("date", new SimpleDateFormat("dd-MM-yyyy").format(rs.getTimestamp("created_at")));
+                match.put("is_completed", rs.getString("is_completed"));
+                match.put("winner", rs.getString("winner_name"));
 
                 matches.add(match);
             }
@@ -111,18 +103,6 @@ public class MatchListener {
                 if (stmt != null) {
                     stmt.close();
                 }
-                if (rs1 != null) {
-                    rs1.close();
-                }
-                if (stmt1 != null) {
-                    stmt1.close();
-                }
-                if (rs2 != null) {
-                    rs2.close();
-                }
-                if (stmt2 != null) {
-                    stmt2.close();
-                }
                 if (conn != null) {
                     conn.close();
                 }
@@ -130,7 +110,6 @@ public class MatchListener {
                 System.err.println("Error closing resources: " + e.getMessage());
             }
         }
-
         return matches;
     }
 }

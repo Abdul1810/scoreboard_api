@@ -12,7 +12,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.*;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @WebServlet("/api/teams")
 public class TeamServlet extends HttpServlet {
@@ -95,7 +94,6 @@ public class TeamServlet extends HttpServlet {
         ResultSet generatedKeys = null;
 
         try {
-            // Insert into players table and collect their IDs
             String insertPlayerQuery = "INSERT INTO players (name) VALUES (?)";
             insertPlayerStmt = conn.prepareStatement(insertPlayerQuery, Statement.RETURN_GENERATED_KEYS);
 
@@ -106,26 +104,22 @@ public class TeamServlet extends HttpServlet {
             }
             insertPlayerStmt.executeBatch();
 
-            // Retrieve generated player IDs
             generatedKeys = insertPlayerStmt.getGeneratedKeys();
             while (generatedKeys.next()) {
                 playerIds.add(generatedKeys.getInt(1));
             }
 
-            // Insert into teams table
             String insertTeamQuery = "INSERT INTO teams (name) VALUES (?)";
             insertTeamStmt = conn.prepareStatement(insertTeamQuery, Statement.RETURN_GENERATED_KEYS);
             insertTeamStmt.setString(1, name.get());
             insertTeamStmt.executeUpdate();
 
-            // Retrieve the generated team ID
             int teamId = 0;
             generatedKeys = insertTeamStmt.getGeneratedKeys();
             if (generatedKeys.next()) {
                 teamId = generatedKeys.getInt(1);
             }
 
-            // Insert into team_players table
             String insertTeamPlayerQuery = "INSERT INTO team_players (team_id, player_id, player_position) VALUES (?, ?, ?)";
             insertTeamPlayerStmt = conn.prepareStatement(insertTeamPlayerQuery);
 

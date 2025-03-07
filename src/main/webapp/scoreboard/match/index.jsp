@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>All Matches</title>
-    <style  >
+    <style>
         body {
             font-family: 'Arial', sans-serif;
             text-align: center;
@@ -99,7 +99,6 @@
             font-weight: bold;
             margin-top: 10px;
         }
-
     </style>
     <script>
         let socket;

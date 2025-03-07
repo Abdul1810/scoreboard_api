@@ -2,7 +2,116 @@
 <html>
 <head>
     <title>Loading...</title>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.4.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h3 {
+            color: #333;
+        }
+
+        #result, #match-result {
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+        }
+
+        .team-stats {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 250px;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-align: left;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 80%;
+            margin: 30px auto;
+            border-collapse: collapse;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+        }
+
+        table th, table td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        table th {
+            background-color: #f2f2f2;
+            color: #333;
+            font-weight: bold;
+        }
+
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        table tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+
+        table tbody tr:hover {
+            background-color: #e6f7ff;
+        }
+
+        table td {
+            font-size: 14px;
+        }
+
+        .green-dot {
+            height: 10px;
+            width: 10px;
+            background-color: limegreen;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .grey-dot {
+            height: 10px;
+            width: 10px;
+            background-color: grey;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .red-dot {
+            height: 10px;
+            width: 10px;
+            background-color: red;
+            border-radius: 50%;
+            display: inline-block;
+        }
+    </style>
     <script>
         let socket;
         let current_batting = "team1";
@@ -92,19 +201,18 @@
                         return;
                     }
                     document.getElementById("match-result").textContent = data.winner !== 'Tie' ? data.winner + " won the match" : "Tie";
+                    updateWicketsTable(data, "");
                     if (data.winner === "team1") {
                         document.getElementById("team1stats").style.backgroundColor = "lightgreen";
                         document.getElementById("team2stats").style.backgroundColor = "white";
                         if (!document.getElementById("team1").textContent.includes("Winner")) {
                             document.getElementById("team1").textContent += " (🎉 Winner)";
-                            triggerConfetti("team1stats");
                         }
                     } else if (data.winner === "team2") {
                         document.getElementById("team2stats").style.backgroundColor = "lightgreen";
                         document.getElementById("team1stats").style.backgroundColor = "white";
                         if (!document.getElementById("team2").textContent.includes("Winner")) {
                             document.getElementById("team2").textContent += " (🎉 Winner)";
-                            triggerConfetti("team2stats");
                         }
                     } else {
                         document.getElementById("team1stats").style.backgroundColor = "peachpuff";
@@ -379,133 +487,7 @@
                 }
             }
         }
-
-        function triggerConfetti(containerId) {
-            const container = document.getElementById(containerId);
-            const rect = container.getBoundingClientRect();
-            const confettiSettings = {
-                target: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, radius: rect.width / 2 },
-                max: 200,
-                props: ['circle', 'square', 'triangle', 'line'],
-                colors: [[165, 104, 246], [230, 61, 135], [0, 199, 228], [253, 214, 126]],
-                clock: 25,
-                rotate: true,
-                start_from_edge: true,
-                respawn: false,
-            };
-            confetti(confettiSettings);
-        }
     </script>
-    <style>
-        body {
-            text-align: center;
-            font-family: Arial, sans-serif;
-            background-color: #f8f9fa;
-            margin: 0;
-            padding: 20px;
-        }
-
-        h3 {
-            color: #333;
-        }
-
-        #result, #match-result {
-            font-size: 16px;
-            margin-bottom: 15px;
-        }
-
-        .container {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-        }
-
-        .team-stats {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 250px;
-            position: relative;
-        }
-
-        label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 5px;
-            text-align: left;
-        }
-
-        input {
-            width: 100%;
-            padding: 8px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
-
-        table {
-            width: 80%;
-            margin: 30px auto;
-            border-collapse: collapse;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-        }
-
-        table th, table td {
-            padding: 12px;
-            text-align: center;
-            border: 1px solid #ddd;
-        }
-
-        table th {
-            background-color: #f2f2f2;
-            color: #333;
-            font-weight: bold;
-        }
-
-        table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        table tr:nth-child(odd) {
-            background-color: #ffffff;
-        }
-
-        table tbody tr:hover {
-            background-color: #e6f7ff;
-        }
-
-        table td {
-            font-size: 14px;
-        }
-
-        .green-dot {
-            height: 10px;
-            width: 10px;
-            background-color: limegreen;
-            border-radius: 50%;
-            display: inline-block;
-        }
-
-        .grey-dot {
-            height: 10px;
-            width: 10px;
-            background-color: grey;
-            border-radius: 50%;
-            display: inline-block;
-        }
-
-        .red-dot {
-            height: 10px;
-            width: 10px;
-            background-color: red;
-            border-radius: 50%;
-            display: inline-block;
-        }
-    </style>
 </head>
 <body>
 <h3>Scoreboard - View</h3>
