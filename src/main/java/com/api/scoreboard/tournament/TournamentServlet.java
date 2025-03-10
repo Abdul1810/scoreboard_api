@@ -38,48 +38,6 @@ public class TournamentServlet extends HttpServlet {
             jsonResponse.put("error", "Invalid number of teams");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         } else {
-//            CREATE TABLE tournaments
-//            (
-//                    id         INT(11)      NOT NULL AUTO_INCREMENT PRIMARY KEY,
-//                    name       VARCHAR(255) NOT NULL UNIQUE,
-//                    created_at DATETIME     NOT NULL DEFAULT current_timestamp()
-//            );
-//
-//            CREATE TABLE tournament_teams
-//            (
-//                    id           INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-//                    tournament_id INT(11) NOT NULL,
-//                    team_id       INT(11) NOT NULL,
-//                    created_at    DATETIME NOT NULL DEFAULT current_timestamp(),
-//                    FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE CASCADE,
-//                    FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
-//                    UNIQUE (tournament_id, team_id)
-//            );
-//
-//            CREATE TABLE tournament_matches
-//            (
-//                    id         INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-//                    tournament_id INT(11) NOT NULL,
-//                    match_id   INT(11) NOT NULL,
-//                    created_at DATETIME NOT NULL DEFAULT current_timestamp(),
-//                    FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE CASCADE,
-//                    FOREIGN KEY (match_id) REFERENCES matches (id) ON DELETE CASCADE,
-//                    UNIQUE (tournament_id, match_id)
-//            );
-//            CREATE TABLE matches
-//            (
-//                id                    INT(11)                                NOT NULL AUTO_INCREMENT PRIMARY KEY,
-//                team1_id              INT(11)                                NOT NULL,
-//                team2_id              INT(11)                                NOT NULL,
-//                is_completed          ENUM ('true', 'false')                 NOT NULL DEFAULT 'false',
-//                winner                ENUM ('team1', 'team2', 'none', 'tie') NOT NULL DEFAULT 'none',
-//                current_batting       ENUM ('team1', 'team2')                NOT NULL DEFAULT 'team1',
-//                active_batsman_index  INT(11)                                NOT NULL DEFAULT 1,
-//                passive_batsman_index INT(11)                                NOT NULL DEFAULT 2,
-//                created_at            DATETIME                               NOT NULL DEFAULT current_timestamp(),
-//                FOREIGN KEY (team1_id) REFERENCES teams (id) ON DELETE CASCADE,
-//                FOREIGN KEY (team2_id) REFERENCES teams (id) ON DELETE CASCADE
-//            );
             Connection conn = null;
             PreparedStatement stmt = null;
             ResultSet rs = null;
