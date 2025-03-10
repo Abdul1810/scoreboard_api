@@ -447,47 +447,63 @@ public class StatsServlet extends HttpServlet {
 
             if (rs.next()) {
                 int tournamentId = rs.getInt("tournament_id");
-                query = "SELECT team_id FROM tournament_winners WHERE tournament_id = ?";
+//                query = "SELECT team_id FROM tournament_winners WHERE tournament_id = ?";
+//                stmt = conn.prepareStatement(query);
+//                stmt.setInt(1, tournamentId);
+//                rs = stmt.executeQuery();
+                query = "SELECT" +
+                        " CASE" +
+                        "     WHEN winner = 'team1' THEN team1_id" +
+                        "     WHEN winner = 'team2' THEN team2_id" +
+                        " END AS team_id" +
+                        " FROM matches" +
+                        " WHERE tournament_id = ?" +
+                        " AND is_completed = 'true'" +
+                        " ORDER BY created_at DESC" +
+                        " LIMIT 1";
                 stmt = conn.prepareStatement(query);
                 stmt.setInt(1, tournamentId);
-
                 rs = stmt.executeQuery();
 
                 if (rs.next()) {
                     int oldWinnerId = rs.getInt("team_id");
                     int newMatchId = Match.create(conn, oldWinnerId, winningTeamId, tournamentId);
                     MatchListener.fireMatchesUpdate();
-                    conn = Database.getConnection();
+//                    conn = Database.getConnection();
 //                    query = "INSERT INTO tournament_matches (tournament_id, match_id) VALUES (?, ?)";
 //                    stmt = conn.prepareStatement(query);
 //                    stmt.setInt(1, tournamentId);
 //                    stmt.setInt(2, newMatchId);
 //                    stmt.executeUpdate();
 
-                    query = "DELETE FROM tournament_winners WHERE tournament_id = ?";
-                    stmt = conn.prepareStatement(query);
-                    stmt.setInt(1, tournamentId);
-                    stmt.executeUpdate();
+//                    query = "DELETE FROM tournament_winners WHERE tournament_id = ?";
+//                    stmt = conn.prepareStatement(query);
+//                    stmt.setInt(1, tournamentId);
+//                    stmt.executeUpdate();
 
-                    query = "UPDATE tournament_teams SET status = 'eliminated' WHERE tournament_id = ? AND team_id = ?";
-                    stmt = conn.prepareStatement(query);
-                    stmt.setInt(1, tournamentId);
-                    stmt.setInt(2, lossingTeamId);
-                    stmt.executeUpdate();
+//                    query = "UPDATE tournament_teams SET status = 'eliminated' WHERE tournament_id = ? AND team_id = ?";
+//                    stmt = conn.prepareStatement(query);
+//                    stmt.setInt(1, tournamentId);
+//                    stmt.setInt(2, lossingTeamId);
+//                    stmt.executeUpdate();
                 } else {
-                    query = "UPDATE tournament_teams SET status = 'eliminated' WHERE tournament_id = ? AND team_id = ?";
-                    stmt = conn.prepareStatement(query);
-                    stmt.setInt(1, tournamentId);
-                    stmt.setInt(2, lossingTeamId);
-                    stmt.executeUpdate();
+//                    query = "UPDATE tournament_teams SET status = 'eliminated' WHERE tournament_id = ? AND team_id = ?";
+//                    stmt = conn.prepareStatement(query);
+//                    stmt.setInt(1, tournamentId);
+//                    stmt.setInt(2, lossingTeamId);
+//                    stmt.executeUpdate();
+//
+//                    query = "INSERT INTO tournament_winners (tournament_id, team_id) VALUES (?, ?)";
+//                    stmt = conn.prepareStatement(query);
+//                    stmt.setInt(1, tournamentId);
+//                    stmt.setInt(2, winningTeamId);
+//                    stmt.executeUpdate();
 
-                    query = "INSERT INTO tournament_winners (tournament_id, team_id) VALUES (?, ?)";
-                    stmt = conn.prepareStatement(query);
-                    stmt.setInt(1, tournamentId);
-                    stmt.setInt(2, winningTeamId);
-                    stmt.executeUpdate();
-
-                    query = "SELECT COUNT(*) AS total_teams FROM tournament_teams WHERE tournament_id = ? AND status = 'active'";
+//                    query = "SELECT COUNT(*) AS total_teams FROM tournament_teams WHERE tournament_id = ? AND status = 'active'";
+//                    stmt = conn.prepareStatement(query);
+//                    stmt.setInt(1, tournamentId);
+//                    rs = stmt.executeQuery();
+                    query = "SELECT COUNT(*) AS total_teams FROM matches WHERE tournament_id = ? AND is_completed = 'false'";
                     stmt = conn.prepareStatement(query);
                     stmt.setInt(1, tournamentId);
                     rs = stmt.executeQuery();
@@ -495,10 +511,10 @@ public class StatsServlet extends HttpServlet {
                     if (rs.next()) {
                         int totalTeams = rs.getInt("total_teams");
                         if (totalTeams == 1) {
-                            query = "UPDATE tournaments AS t JOIN tournament_teams AS tt ON t.id = tt.tournament_id SET t.status = 'completed', tt.status = 'winner' WHERE t.id = ? AND tt.team_id = ?";
+                            query = "UPDATE tournaments SET status = 'completed', winner_id = ? WHERE id = ?";
                             stmt = conn.prepareStatement(query);
-                            stmt.setInt(1, tournamentId);
-                            stmt.setInt(2, winningTeamId);
+                            stmt.setInt(1, winningTeamId);
+                            stmt.setInt(2, tournamentId);
                             stmt.executeUpdate();
                         }
                     }
@@ -510,6 +526,7 @@ public class StatsServlet extends HttpServlet {
             try {
                 if (rs != null) rs.close();
                 if (stmt != null) stmt.close();
+                if (conn != null) conn.close();
             } catch (SQLException e) {
                 System.err.println("Error closing resources: " + e.getMessage());
             }

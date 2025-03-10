@@ -52,7 +52,7 @@ public class MatchServlet extends HttpServlet {
                         tournamentMatches.add(rs1.getInt("id"));
                     }
 
-                    if (!tournamentMatches.isEmpty()) {
+                    if (!tournamentMatches.isEmpty() && tournamentMatches.contains(rs.getInt("id"))) {
                         System.out.println(tournamentMatches.size());
                         tournamentMatches.forEach(System.out::println);
                         if (tournamentMatches.get(0) != rs.getInt("id")) {

@@ -103,14 +103,14 @@ public class TournamentServlet extends HttpServlet {
                 rs = stmt.getGeneratedKeys();
                 rs.next();
                 int tournamentId = rs.getInt(1);
-                stmt = conn.prepareStatement("INSERT INTO tournament_teams (tournament_id, team_id) VALUES (?, ?)");
-
-                for (int teamId : teams) {
-                    stmt.setInt(1, tournamentId);
-                    stmt.setInt(2, teamId);
-                    stmt.addBatch();
-                }
-                stmt.executeBatch();
+//                stmt = conn.prepareStatement("INSERT INTO tournament_teams (tournament_id, team_id) VALUES (?, ?)");
+//
+//                for (int teamId : teams) {
+//                    stmt.setInt(1, tournamentId);
+//                    stmt.setInt(2, teamId);
+//                    stmt.addBatch();
+//                }
+//                stmt.executeBatch();
                 List<Integer> matchIds = new ArrayList<>();
                 while (teams.size() > 1) {
                     int team1 = teams.remove(0);
@@ -128,6 +128,7 @@ public class TournamentServlet extends HttpServlet {
 
                 MatchListener.fireMatchesUpdate();
                 jsonResponse.put("tournamentId", tournamentId);
+                jsonResponse.put("matchIds", matchIds);
                 response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
             } catch (Exception e) {
                 System.out.println("Database connection error: " + e.getMessage());
@@ -205,16 +206,7 @@ public class TournamentServlet extends HttpServlet {
         } else {
             try {
                 conn = Database.getConnection();
-                String query = "SELECT t.id AS tournament_id, " +
-                        "t.name AS tournament_name, " +
-                        "t.status, " +
-                        "t.created_at, " +
-                        "tm.name AS winning_team_name " +
-                        "FROM tournaments t " +
-                        "LEFT JOIN tournament_teams tt ON t.id = tt.tournament_id AND tt.status = 'winner' " +
-                        "LEFT JOIN teams tm ON tt.team_id = tm.id " +
-                        "WHERE t.id = ?";
-                stmt = conn.prepareStatement(query);
+                stmt = conn.prepareStatement("SELECT t.id AS tournament_id, t.name AS tournament_name, t.status, t.created_at, tm.name AS winning_team_name " + "FROM tournaments t " + "LEFT JOIN teams tm ON t.winner_id = tm.id " + "WHERE t.id = ?");
                 stmt.setString(1, tId);
                 rs = stmt.executeQuery();
 
