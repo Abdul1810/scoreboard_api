@@ -1,6 +1,5 @@
 package com.api.scoreboard.tournament;
 
-
 import com.api.scoreboard.stats.StatsListener;
 import com.api.scoreboard.commons.Match;
 import com.api.scoreboard.match.MatchListener;
