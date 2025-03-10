@@ -24,6 +24,14 @@ CREATE TABLE team_players
     UNIQUE (team_id, player_id)
 );
 
+CREATE TABLE tournaments
+(
+    id         INT(11)      NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(255) NOT NULL UNIQUE,
+    status     ENUM ('ongoing', 'completed') NOT NULL DEFAULT 'ongoing',
+    created_at DATETIME     NOT NULL DEFAULT current_timestamp()
+);
+
 CREATE TABLE matches
 (
     id                    INT(11)                                NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -34,9 +42,11 @@ CREATE TABLE matches
     current_batting       ENUM ('team1', 'team2')                NOT NULL DEFAULT 'team1',
     active_batsman_index  INT(11)                                NOT NULL DEFAULT 1,
     passive_batsman_index INT(11)                                NOT NULL DEFAULT 2,
+    tournament_id         INT(11)                                NULL,
     created_at            DATETIME                               NOT NULL DEFAULT current_timestamp(),
     FOREIGN KEY (team1_id) REFERENCES teams (id) ON DELETE CASCADE,
-    FOREIGN KEY (team2_id) REFERENCES teams (id) ON DELETE CASCADE
+    FOREIGN KEY (team2_id) REFERENCES teams (id) ON DELETE CASCADE,
+    FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE SET NULL
 );
 
 CREATE TABLE player_stats
@@ -56,37 +66,16 @@ CREATE TABLE player_stats
     FOREIGN KEY (wicketer_id) REFERENCES players (id) ON DELETE SET NULL
 );
 
-CREATE TABLE tournaments
-(
-    id         INT(11)      NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    name       VARCHAR(255) NOT NULL UNIQUE,
-    status     ENUM ('ongoing', 'completed') NOT NULL DEFAULT 'ongoing',
-    winner_id  INT(11)      NULL,
-    created_at DATETIME     NOT NULL DEFAULT current_timestamp(),
-    FOREIGN KEY (winner_id) REFERENCES teams (id) ON DELETE SET NULL
-);
-
 CREATE TABLE tournament_teams
 (
     id           INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tournament_id INT(11) NOT NULL,
     team_id       INT(11) NOT NULL,
-    status       ENUM ('active', 'eliminated') NOT NULL DEFAULT 'active',
+    status       ENUM ('active', 'eliminated', 'winner') NOT NULL DEFAULT 'active',
     created_at    DATETIME NOT NULL DEFAULT current_timestamp(),
     FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE CASCADE,
     FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
     UNIQUE (tournament_id, team_id)
-);
-
-CREATE TABLE tournament_matches
-(
-    id         INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    tournament_id INT(11) NOT NULL,
-    match_id   INT(11) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT current_timestamp(),
-    FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE CASCADE,
-    FOREIGN KEY (match_id) REFERENCES matches (id) ON DELETE CASCADE,
-    UNIQUE (tournament_id, match_id)
 );
 
 CREATE TABLE tournament_winners
@@ -99,3 +88,14 @@ CREATE TABLE tournament_winners
     FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
     UNIQUE (tournament_id, team_id)
 );
+
+# CREATE TABLE tournament_matches
+# (
+#     id         INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+#     tournament_id INT(11) NOT NULL,
+#     match_id   INT(11) NOT NULL,
+#     created_at DATETIME NOT NULL DEFAULT current_timestamp(),
+#     FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE CASCADE,
+#     FOREIGN KEY (match_id) REFERENCES matches (id) ON DELETE CASCADE,
+#     UNIQUE (tournament_id, match_id)
+# );

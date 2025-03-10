@@ -1,4 +1,4 @@
-package com.api.scoreboard;
+package com.api.scoreboard.stats;
 
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnOpen;

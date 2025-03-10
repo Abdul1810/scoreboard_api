@@ -1,7 +1,7 @@
 package com.api.scoreboard.tournament;
 
 
-import com.api.scoreboard.StatsListener;
+import com.api.scoreboard.stats.StatsListener;
 import com.api.scoreboard.commons.Match;
 import com.api.scoreboard.match.MatchListener;
 import com.api.util.Database;
@@ -80,7 +80,6 @@ public class TournamentServlet extends HttpServlet {
 //                FOREIGN KEY (team1_id) REFERENCES teams (id) ON DELETE CASCADE,
 //                FOREIGN KEY (team2_id) REFERENCES teams (id) ON DELETE CASCADE
 //            );
-//          iam not using any model just add the teams to the tournament_teams table and return the tournament id
             Connection conn = null;
             PreparedStatement stmt = null;
             ResultSet rs = null;
@@ -116,16 +115,16 @@ public class TournamentServlet extends HttpServlet {
                 while (teams.size() > 1) {
                     int team1 = teams.remove(0);
                     int team2 = teams.remove(0);
-                    matchIds.add(Match.create(conn, team1, team2));
+                    matchIds.add(Match.create(conn, team1, team2, tournamentId));
                 }
 
-                stmt = conn.prepareStatement("INSERT INTO tournament_matches (tournament_id, match_id) VALUES (?, ?)");
-                for (int matchId : matchIds) {
-                    stmt.setInt(1, tournamentId);
-                    stmt.setInt(2, matchId);
-                    stmt.addBatch();
-                }
-                stmt.executeBatch();
+//                stmt = conn.prepareStatement("INSERT INTO tournament_matches (tournament_id, match_id) VALUES (?, ?)");
+//                for (int matchId : matchIds) {
+//                    stmt.setInt(1, tournamentId);
+//                    stmt.setInt(2, matchId);
+//                    stmt.addBatch();
+//                }
+//                stmt.executeBatch();
 
                 MatchListener.fireMatchesUpdate();
                 jsonResponse.put("tournamentId", tournamentId);
@@ -160,7 +159,7 @@ public class TournamentServlet extends HttpServlet {
         if (tId == null) {
             try {
                 conn = Database.getConnection();
-                String sql = "SELECT t.id AS tournament_id, t.name AS tournament_name, t.created_at AS tournament_created_at, " + "m.id AS match_id, team1.name AS team1_name, team2.name AS team2_name " + "FROM tournaments t " + "LEFT JOIN tournament_matches tm ON t.id = tm.tournament_id " + "LEFT JOIN matches m ON tm.match_id = m.id AND m.is_completed = 'false' " + "LEFT JOIN teams team1 ON m.team1_id = team1.id " + "LEFT JOIN teams team2 ON m.team2_id = team2.id " + "ORDER BY t.id, m.id";
+                String sql = "SELECT t.id AS tournament_id, t.name AS tournament_name, t.created_at AS tournament_created_at, " + "m.id AS match_id, team1.name AS team1_name, team2.name AS team2_name " + "FROM tournaments t " + "LEFT JOIN matches m ON t.id = m.tournament_id AND m.is_completed = 'false' " + "LEFT JOIN teams team1 ON m.team1_id = team1.id " + "LEFT JOIN teams team2 ON m.team2_id = team2.id " + "ORDER BY t.id, m.id";
 
                 stmt = conn.prepareStatement(sql);
                 rs = stmt.executeQuery();
@@ -168,7 +167,6 @@ public class TournamentServlet extends HttpServlet {
                 Map<Integer, Map<String, Object>> tournamentMap = new LinkedHashMap<>();
                 while (rs.next()) {
                     int tournamentId = rs.getInt("tournament_id");
-
                     tournamentMap.putIfAbsent(tournamentId, new HashMap<>());
                     Map<String, Object> tournament = tournamentMap.get(tournamentId);
 
@@ -207,7 +205,16 @@ public class TournamentServlet extends HttpServlet {
         } else {
             try {
                 conn = Database.getConnection();
-                stmt = conn.prepareStatement("SELECT t.id AS tournament_id, t.name AS tournament_name, t.status, t.created_at, tm.name AS winning_team_name " + "FROM tournaments t " + "LEFT JOIN teams tm ON t.winner_id = tm.id " + "WHERE t.id = ?");
+                String query = "SELECT t.id AS tournament_id, " +
+                        "t.name AS tournament_name, " +
+                        "t.status, " +
+                        "t.created_at, " +
+                        "tm.name AS winning_team_name " +
+                        "FROM tournaments t " +
+                        "LEFT JOIN tournament_teams tt ON t.id = tt.tournament_id AND tt.status = 'winner' " +
+                        "LEFT JOIN teams tm ON tt.team_id = tm.id " +
+                        "WHERE t.id = ?";
+                stmt = conn.prepareStatement(query);
                 stmt.setString(1, tId);
                 rs = stmt.executeQuery();
 
@@ -223,7 +230,7 @@ public class TournamentServlet extends HttpServlet {
                     }
 
                     List<Map<String, Object>> matches = new ArrayList<>();
-                    stmt = conn.prepareStatement("SELECT m.id, m.winner, m.is_completed, team1.name AS team1_name, team2.name AS team2_name, " + "CASE " + "   WHEN m.winner = 'team1' THEN team1.name " + "   WHEN m.winner = 'team2' THEN team2.name " + "   WHEN m.winner = 'tie' THEN 'Match Tied' " + "   ELSE 'Not decided' " + "END AS winner_name " + "FROM tournament_matches tm " + "JOIN matches m ON tm.match_id = m.id " + "JOIN teams team1 ON m.team1_id = team1.id " + "JOIN teams team2 ON m.team2_id = team2.id " + "WHERE tm.tournament_id = ?");
+                    stmt = conn.prepareStatement("SELECT m.id, m.winner, m.is_completed, team1.name AS team1_name, team2.name AS team2_name, " + "CASE " + "   WHEN m.winner = 'team1' THEN team1.name " + "   WHEN m.winner = 'team2' THEN team2.name " + "   WHEN m.winner = 'tie' THEN 'Match Tied' " + "   ELSE 'Not decided' " + "END AS winner_name " + "FROM matches m " + "JOIN teams team1 ON m.team1_id = team1.id " + "JOIN teams team2 ON m.team2_id = team2.id " + "WHERE m.tournament_id = ?");
                     stmt.setString(1, tId);
                     rs = stmt.executeQuery();
 
@@ -281,13 +288,13 @@ public class TournamentServlet extends HttpServlet {
             rs = stmt.executeQuery();
 
             if (rs.next()) {
-                stmt = conn.prepareStatement("SELECT match_id FROM tournament_matches WHERE tournament_id = ?");
+                stmt = conn.prepareStatement("SELECT id FROM matches WHERE tournament_id = ?");
                 stmt.setString(1, tId);
                 rs = stmt.executeQuery();
                 while (rs.next()) {
-                    StatsListener.fireStatsRemove(rs.getString("match_id"));
+                    StatsListener.fireStatsRemove(rs.getString("id"));
                 }
-                stmt = conn.prepareStatement("DELETE FROM matches WHERE id IN (SELECT match_id FROM tournament_matches WHERE tournament_id = ?)");
+                stmt = conn.prepareStatement("DELETE FROM matches WHERE tournament_id = ?");
                 stmt.setString(1, tId);
                 stmt.executeUpdate();
 

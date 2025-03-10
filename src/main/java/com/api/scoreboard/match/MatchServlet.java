@@ -1,6 +1,6 @@
 package com.api.scoreboard.match;
 
-import com.api.scoreboard.StatsListener;
+import com.api.scoreboard.stats.StatsListener;
 import com.api.scoreboard.commons.Match;
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,21 +40,19 @@ public class MatchServlet extends HttpServlet {
                 if (rs.next()) {
                     query = "    SELECT m.id, m.team1_id, m.team2_id, m.is_completed" +
                             "    FROM matches m" +
-                            "    JOIN tournament_matches tm ON m.id = tm.match_id" +
-                            "    WHERE tm.tournament_id = (" +
-                            "        SELECT tournament_id FROM tournament_matches WHERE match_id = ?" +
-                            "    ) " +
-                            "    AND m.is_completed = 'false'";
+                            "    WHERE m.tournament_id = ?" +
+                            "    AND m.is_completed = 'false'" +
+                            "    ORDER BY m.id";
                     stmt = conn.prepareStatement(query);
-                    stmt.setInt(1, rs.getInt("id"));
+                    stmt.setInt(1, rs.getInt("tournament_id"));
                     rs1 = stmt.executeQuery();
                     List<Integer> tournamentMatches = new ArrayList<>();
+
                     while (rs1.next()) {
                         tournamentMatches.add(rs1.getInt("id"));
                     }
 
                     if (!tournamentMatches.isEmpty()) {
-                        tournamentMatches.sort(Integer::compareTo);
                         System.out.println(tournamentMatches.size());
                         tournamentMatches.forEach(System.out::println);
                         if (tournamentMatches.get(0) != rs.getInt("id")) {

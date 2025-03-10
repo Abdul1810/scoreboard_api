@@ -1,4 +1,4 @@
-package com.api.scoreboard_client;
+package com.api.old.scoreboard_client;
 
 import jakarta.websocket.*;
 import jakarta.websocket.server.ServerEndpoint;

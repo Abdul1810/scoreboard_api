@@ -7,13 +7,26 @@ import java.sql.Statement;
 
 public class Match {
     public static int create(Connection conn, int team1Id, int team2Id) throws Exception {
+        return create(conn, team1Id, team2Id, -1);
+    }
+
+    public static int create(Connection conn, int team1Id, int team2Id, int tournamentId) throws Exception {
+        String insertMatchQuery;
         PreparedStatement insertMatchStmt;
         ResultSet rs;
         int matchId = -1;
-        String insertMatchQuery = "INSERT INTO matches (team1_id, team2_id, is_completed, winner, current_batting) VALUES (?, ?, 'false', 'none', 'team1')";
-        insertMatchStmt = conn.prepareStatement(insertMatchQuery, Statement.RETURN_GENERATED_KEYS);
-        insertMatchStmt.setInt(1, team1Id);
-        insertMatchStmt.setInt(2, team2Id);
+        if (tournamentId != -1) {
+            insertMatchQuery = "INSERT INTO matches (team1_id, team2_id, tournament_id, is_completed, winner, current_batting) VALUES (?, ?, ?, 'false', 'none', 'team1')";
+            insertMatchStmt = conn.prepareStatement(insertMatchQuery, Statement.RETURN_GENERATED_KEYS);
+            insertMatchStmt.setInt(1, team1Id);
+            insertMatchStmt.setInt(2, team2Id);
+            insertMatchStmt.setInt(3, tournamentId);
+        } else {
+            insertMatchQuery = "INSERT INTO matches (team1_id, team2_id, is_completed, winner, current_batting) VALUES (?, ?, 'false', 'none', 'team1')";
+            insertMatchStmt = conn.prepareStatement(insertMatchQuery, Statement.RETURN_GENERATED_KEYS);
+            insertMatchStmt.setInt(1, team1Id);
+            insertMatchStmt.setInt(2, team2Id);
+        }
         insertMatchStmt.executeUpdate();
 
         rs = insertMatchStmt.getGeneratedKeys();

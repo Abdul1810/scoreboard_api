@@ -45,7 +45,7 @@ public class MatchListener {
             for (Session session : sendingSessions) {
                 try {
                     System.out.println("Send content to session: " + session.getId());
-                    if (session == null || !session.isOpen()) {
+                    if (!session.isOpen()) {
                         toRemove.add(session);
                         continue;
                     }

@@ -1,6 +1,6 @@
 package com.api.scoreboard.team;
 
-import com.api.scoreboard.StatsListener;
+import com.api.scoreboard.stats.StatsListener;
 import com.api.scoreboard.match.MatchListener;
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;

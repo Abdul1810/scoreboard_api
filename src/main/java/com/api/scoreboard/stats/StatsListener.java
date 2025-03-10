@@ -1,4 +1,4 @@
-package com.api.scoreboard;
+package com.api.scoreboard.stats;
 
 import com.api.util.Database;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
