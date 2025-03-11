@@ -139,7 +139,6 @@ public class TournamentServlet extends HttpServlet {
                     if (team1 != null && team2 != null) {
                         matches.add(team1 + " vs " + team2);
                     }
-
                     tournament.put("matches", matches);
                 }
 
@@ -179,7 +178,7 @@ public class TournamentServlet extends HttpServlet {
                     }
 
                     List<Map<String, Object>> matches = new ArrayList<>();
-                    stmt = conn.prepareStatement("SELECT m.id, m.winner, m.is_completed, team1.name AS team1_name, team2.name AS team2_name, " + "CASE " + "   WHEN m.winner = 'team1' THEN team1.name " + "   WHEN m.winner = 'team2' THEN team2.name " + "   WHEN m.winner = 'tie' THEN 'Match Tied' " + "   ELSE 'Not decided' " + "END AS winner_name " + "FROM matches m " + "JOIN teams team1 ON m.team1_id = team1.id " + "JOIN teams team2 ON m.team2_id = team2.id " + "WHERE m.tournament_id = ?");
+                    stmt = conn.prepareStatement("SELECT m.id, m.winner, m.is_completed, team1.name AS team1_name, team2.name AS team2_name, " + "CASE " + "   WHEN m.winner = 'team1' THEN team1.name " + "   WHEN m.winner = 'team2' THEN team2.name " + "   WHEN m.winner = 'tie' THEN 'Match Tied' " + "   ELSE 'Not decided' " + "END AS winner_name " + "FROM matches m " + "JOIN teams team1 ON m.team1_id = team1.id " + "JOIN teams team2 ON m.team2_id = team2.id " + "WHERE m.tournament_id = ?" + "ORDER BY m.id");
                     stmt.setString(1, tId);
                     rs = stmt.executeQuery();
 
