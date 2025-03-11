@@ -71,6 +71,7 @@ public class MatchServlet extends HttpServlet {
                     Map<String, Object> match = new HashMap<>();
                     match.put("id", String.valueOf(matchIds.get("id")));
                     match.put("is_completed", rs.getString("is_completed"));
+                    match.put("highlights_path", rs.getString("highlights_path"));
                     match.put("winner", rs.getString("winner"));
                     match.put("current_batting", rs.getString("current_batting"));
                     match.put("active_batsman_index", rs.getInt("active_batsman_index"));

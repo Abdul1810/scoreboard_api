@@ -11,8 +11,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @WebServlet("/api/total-score")
 public class PlayerScoreServlet extends HttpServlet {
@@ -42,8 +41,6 @@ public class PlayerScoreServlet extends HttpServlet {
 
         try {
             conn = Database.getConnection();
-
-            // Fetch player ID using player name and team ID from team_players table
             String playerQuery = "SELECT tp.player_id FROM team_players tp JOIN players p ON tp.player_id = p.id WHERE p.name = ? AND tp.team_id = ?";
             stmt = conn.prepareStatement(playerQuery);
             stmt.setString(1, player);
@@ -53,27 +50,22 @@ public class PlayerScoreServlet extends HttpServlet {
             if (!rs.next()) {
                 response.setStatus(404);
                 jsonResponse.put("message", "Player not found");
-                try {
-                    response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-                } catch (IOException e) {
-                    System.out.println("Error writing response: " + e.getMessage());
-                }
+                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 return;
             }
 
             playerId = rs.getInt("player_id");
-
             String matchQuery =
-                    "SELECT ps1.match_id, ps1.runs, ps1.balls, SUM(ps2.wickets) AS wickets " +
-                            "FROM player_stats ps1 " +
-                            "JOIN matches m ON ps1.match_id = m.id " +
-                            "LEFT JOIN player_stats ps2 " +
-                            "ON ps1.match_id = ps2.match_id " +
-                            "AND ps1.player_id <> ps2.player_id " +
-                            "AND ps2.team_id IN (m.team1_id, m.team2_id) " +
-                            "WHERE ps1.player_id = ? " +
-                            "AND ? IN (m.team1_id, m.team2_id) " +
-                            "GROUP BY ps1.match_id, ps1.runs, ps1.wickets, ps1.balls";
+                "SELECT t.name AS tournament_name, " +
+                "SUM(ps1.runs) AS tournament_total_runs, " +
+                "SUM(ps1.balls) AS tournament_total_balls, " +
+                "SUM(ps1.wickets) AS tournament_total_wickets " +
+                "FROM player_stats ps1 " +
+                "JOIN matches m ON ps1.match_id = m.id " +
+                "LEFT JOIN tournaments t ON m.tournament_id = t.id " +
+                "WHERE ps1.player_id = ? " +
+                "AND ? IN (m.team1_id, m.team2_id) " +
+                "GROUP BY m.id";
 
             stmt = conn.prepareStatement(matchQuery);
             stmt.setInt(1, playerId);
@@ -83,29 +75,53 @@ public class PlayerScoreServlet extends HttpServlet {
             int totalRuns = 0;
             int matchesPlayed = 0;
             int totalBalls = 0;
+            List<Map<String, Object>> tournamentStats = new ArrayList<>();
 
             while (rs.next()) {
-                int playerRuns = rs.getInt("runs");
-                int ballsFaced = rs.getInt("balls");
+                String tournamentName = rs.getString("tournament_name");
+                int tournamentRuns = rs.getInt("tournament_total_runs");
+                int tournamentBalls = rs.getInt("tournament_total_balls");
+                int tournamentWickets = rs.getInt("tournament_total_wickets");
 
-                totalRuns += playerRuns;
-                totalBalls += ballsFaced;
+                totalRuns += tournamentRuns;
+                totalBalls += tournamentBalls;
 
-                if (ballsFaced > 0) {
+                if (tournamentBalls > 0) {
                     matchesPlayed++;
                 }
+
+                if (tournamentName != null) {
+                    boolean found = false;
+                    for (Map<String, Object> tournamentData : tournamentStats) {
+                        if (tournamentData.get("name").equals(tournamentName)) {
+                            found = true;
+                            tournamentData.put("total_runs", (int) tournamentData.get("total_runs") + tournamentRuns);
+                            tournamentData.put("total_balls", (int) tournamentData.get("total_balls") + tournamentBalls);
+                            tournamentData.put("total_wickets", (int) tournamentData.get("total_wickets") + tournamentWickets);
+                            tournamentData.put("total_matches", (int) tournamentData.get("total_matches") + 1);
+                            break;
+                        }
+                    }
+
+                    if (!found) {
+                        Map<String, Object> tournamentData = new HashMap<>();
+                        tournamentData.put("name", tournamentName);
+                        tournamentData.put("total_runs", tournamentRuns);
+                        tournamentData.put("total_balls", tournamentBalls);
+                        tournamentData.put("total_wickets", tournamentWickets);
+                        tournamentData.put("total_matches", 1);
+                        tournamentStats.add(tournamentData);
+                    }
+                }
             }
+
             jsonResponse.put("player", player);
             jsonResponse.put("team_id", teamId);
             jsonResponse.put("total_score", totalRuns);
             jsonResponse.put("matches_played", matchesPlayed);
             jsonResponse.put("total_balls", totalBalls);
-
-            try {
-                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-            } catch (IOException e) {
-                System.out.println("Error: " + e.getMessage());
-            }
+            jsonResponse.put("tournaments", tournamentStats);
+            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } catch (Exception e) {
             System.out.println("Database error: " + e.getMessage());
         } finally {

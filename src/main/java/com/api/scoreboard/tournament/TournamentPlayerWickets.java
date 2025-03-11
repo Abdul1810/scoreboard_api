@@ -25,14 +25,13 @@ public class TournamentPlayerWickets extends HttpServlet {
         String id = request.getParameter("id");
         String playerId = request.getParameter("player_id");
 
-        if (id == null || playerId == null) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            jsonResponse.put("error", "Missing required parameter 'id' or 'player_id'");
-            writeResponse(response, jsonResponse);
-            return;
-        }
-
         try {
+            if (id == null || playerId == null) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                jsonResponse.put("error", "Missing required parameter 'id' or 'player_id'");
+                response.getWriter().print(objectMapper.writeValueAsString(jsonResponse));
+                return;
+            }
             AtomicInteger playerIndex = new AtomicInteger(-1);
             AtomicInteger teamId = new AtomicInteger(-1);
             AtomicReference<String> playerName = new AtomicReference<>("");
@@ -44,17 +43,16 @@ public class TournamentPlayerWickets extends HttpServlet {
             if (playerIndex.get() == -1) {
                 response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 jsonResponse.put("error", "Player not found in tournament");
-                writeResponse(response, jsonResponse);
+                response.getWriter().print(objectMapper.writeValueAsString(jsonResponse));
                 return;
             }
 
             fetchPlayerWicketsData(jsonResponse, teamId.get(), Integer.parseInt(playerId), Integer.parseInt(id), playerName.get(), playerIndex.get());
+            response.getWriter().print(objectMapper.writeValueAsString(jsonResponse));
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             jsonResponse.put("error", "Database error: " + e.getMessage());
         }
-
-        writeResponse(response, jsonResponse);
     }
 
     private void fetchPlayerWicketsData(Map<String, Object> jsonResponse, int teamId, int playerId, int tournamentId, String player, int playerIndex) throws Exception {
@@ -158,15 +156,6 @@ public class TournamentPlayerWickets extends HttpServlet {
             if (rs != null) rs.close();
             if (stmt != null) stmt.close();
             if (conn != null) conn.close();
-        }
-    }
-
-    private void writeResponse(HttpServletResponse response, Map<String, Object> jsonResponse) {
-        response.setContentType("application/json");
-        try {
-            response.getWriter().print(objectMapper.writeValueAsString(jsonResponse));
-        } catch (Exception e) {
-            System.out.println("Error writing response: " + e.getMessage());
         }
     }
 

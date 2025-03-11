@@ -62,7 +62,7 @@ public class MatchListener {
     private static List<Map<String, String>> fetchMatchesFromDatabase() {
         List<Map<String, String>> matches = new ArrayList<>();
         String query = "SELECT m.id, t1.name AS team1, t2.name AS team2, m.created_at, " +
-                "m.is_completed, m.winner, " +
+                "m.is_completed, m.highlights_path, m.winner, " +
                 "CASE " +
                 "   WHEN m.winner = 'team1' THEN t1.name " +
                 "   WHEN m.winner = 'team2' THEN t2.name " +
@@ -71,12 +71,12 @@ public class MatchListener {
                 "END AS winner_name " +
                 "FROM matches m " +
                 "JOIN teams t1 ON m.team1_id = t1.id " +
-                "JOIN teams t2 ON m.team2_id = t2.id";
+                "JOIN teams t2 ON m.team2_id = t2.id " +
+                "ORDER BY m.created_at ASC";
 
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
-
         try {
             conn = Database.getConnection();
             stmt = conn.prepareStatement(query);
@@ -88,13 +88,14 @@ public class MatchListener {
                 match.put("team1", rs.getString("team1"));
                 match.put("team2", rs.getString("team2"));
                 match.put("date", new SimpleDateFormat("dd-MM-yyyy").format(rs.getTimestamp("created_at")));
+                match.put("highlights_path", rs.getString("highlights_path"));
                 match.put("is_completed", rs.getString("is_completed"));
                 match.put("winner", rs.getString("winner_name"));
 
                 matches.add(match);
             }
         } catch (Exception e) {
-            System.err.println("Error fetching matches from database: " + e.getMessage());
+            System.out.println("Error fetching matches from database: " + e.getMessage());
         } finally {
             try {
                 if (rs != null) {

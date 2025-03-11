@@ -114,6 +114,7 @@ public class StatsListener {
 
                 matchStats.put("current_batting", rs.getString("current_batting"));
                 matchStats.put("is_completed", rs.getString("is_completed"));
+                matchStats.put("highlights_path", rs.getString("highlights_path"));
                 matchStats.put("winner", rs.getString("winner"));
                 matchStats.put("active_batsman_index", rs.getInt("active_batsman_index"));
                 matchStats.put("passive_batsman_index", rs.getInt("passive_batsman_index"));
@@ -164,7 +165,7 @@ public class StatsListener {
                         team2WicketsMap.add(wicketerName);
                     }
                 }
-
+                matchStats.put("is_highlights_uploaded", matchStats.get("highlights_path") == null && Objects.equals(matchStats.get("is_completed"), "true") ? "false" : "true");
                 matchStats.put("team1_score", team1Runs.values().stream().mapToInt(Integer::intValue).sum());
                 matchStats.put("team2_score", team2Runs.values().stream().mapToInt(Integer::intValue).sum());
                 matchStats.put("team1_wickets", team1Wickets.values().stream().mapToInt(Integer::intValue).sum());
@@ -193,6 +194,7 @@ public class StatsListener {
         }
 
         try {
+            System.out.println("Match stats: " + matchStats);
             return objectMapper.writeValueAsString(matchStats);
         } catch (JsonProcessingException e) {
             System.out.println("Error converting to JSON: " + e.getMessage());

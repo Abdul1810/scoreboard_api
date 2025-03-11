@@ -84,6 +84,7 @@ public class StatsServlet extends HttpServlet {
             matchStats.put("active_batsman_index", String.valueOf(activeBatsmanIndex));
             matchStats.put("passive_batsman_index", String.valueOf(passiveBatsmanIndex));
             matchStats.put("is_completed", isCompleted);
+            matchStats.put("highlights_path", rs.getString("highlights_path"));
             matchStats.put("winner", winner);
 
             query = "SELECT ps.player_id, ps.runs, ps.wickets, ps.team_id, ps.wicketer_id, ps.balls, " +
@@ -296,6 +297,7 @@ public class StatsServlet extends HttpServlet {
             matchData.put("id", matchStats.get("id"));
             matchData.put("current_batting", matchStats.get("current_batting"));
             matchData.put("is_completed", matchStats.get("is_completed"));
+            matchData.put("is_highlights_uploaded", matchStats.get("highlights_path") == null && Objects.equals(matchStats.get("is_completed"), "true") ? "false" : "true");
             matchData.put("winner", matchStats.get("winner"));
             matchData.put("active_batsman_index", activeBatsmanIndex);
             matchData.put("passive_batsman_index", passiveBatsmanIndex);
