@@ -1,4 +1,4 @@
-package com.api.scoreboard.match;
+package com.api.scoreboard.match.highlights;
 
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +28,7 @@ import java.util.Map;
         maxFileSize = 1024 * 1024 * 100,
         maxRequestSize = 1024 * 1024 * 150
 )
-public class UploadHighlightsServlet extends HttpServlet {
+public class HighlightsServlet extends HttpServlet {
     private static final String UPLOAD_DIRECTORY = "F:\\Code\\JAVA\\zoho_training\\uploads";
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> jsonResponse = new HashMap<>();
@@ -172,10 +172,7 @@ public class UploadHighlightsServlet extends HttpServlet {
                 match.put("is_completed", rs.getString("is_completed"));
                 match.put("highlights_path", rs.getString("highlights_path"));
                 match.put("winner", rs.getString("winner"));
-                match.put("current_batting", rs.getString("current_batting"));
-                match.put("active_batsman_index", rs.getInt("active_batsman_index"));
-                match.put("passive_batsman_index", rs.getInt("passive_batsman_index"));
-                query = "SELECT t.name, p.name as player_name, ps.balls FROM teams t " +
+                query = "SELECT t.name, p.id as player_id, p.name as player_name, ps.balls FROM teams t " +
                         "JOIN team_players tp ON t.id = tp.team_id " +
                         "JOIN players p ON tp.player_id = p.id " +
                         "LEFT JOIN player_stats ps ON ps.team_id = t.id AND ps.player_id = p.id " +
@@ -186,32 +183,52 @@ public class UploadHighlightsServlet extends HttpServlet {
                 stmt.setInt(2, matchIds.get("team1_id"));
                 rs = stmt.executeQuery();
 
+                List<Map<String, Object>> player1Map = new ArrayList<>();
+                List<Map<String, Object>> player2Map = new ArrayList<>();
+                Map<Integer, String> timestamps = new HashMap<>();
+
+                int sum = 0;
                 if (rs.next()) {
                     match.put("team1", rs.getString("name"));
-                    List<String> team1Players = new ArrayList<>();
-                    List<Integer> team1Balls = new ArrayList<>();
                     do {
-                        team1Players.add(rs.getString("player_name"));
-                        team1Balls.add(rs.getInt("balls"));
+                        Map<String, Object> player = new HashMap<>();
+                        player.put("id", rs.getInt("player_id"));
+                        player.put("name", rs.getString("player_name"));
+                        player.put("balls", rs.getInt("balls"));
+                        player.put("startTime", sum);
+                        player1Map.add(player);
+                        sum += rs.getInt("balls") * 5;
                     } while (rs.next());
-                    match.put("team1_players", team1Players);
-                    match.put("team1_balls", team1Balls);
                 }
 
                 stmt.setInt(2, matchIds.get("team2_id"));
                 rs = stmt.executeQuery();
-
                 if (rs.next()) {
                     match.put("team2", rs.getString("name"));
-                    List<String> team2Players = new ArrayList<>();
-                    List<Integer> team2Balls = new ArrayList<>();
                     do {
-                        team2Players.add(rs.getString("player_name"));
-                        team2Balls.add(rs.getInt("balls"));
+                        Map<String, Object> player = new HashMap<>();
+                        player.put("id", rs.getInt("player_id"));
+                        player.put("name", rs.getString("player_name"));
+                        player.put("balls", rs.getInt("balls"));
+                        player.put("startTime", sum);
+                        player2Map.add(player);
+                        sum += rs.getInt("balls") * 5;
                     } while (rs.next());
-                    match.put("team2_players", team2Players);
-                    match.put("team2_balls", team2Balls);
                 }
+
+                sum = 0;
+                for (Map<String, Object> stringObjectMap : player1Map) {
+                    sum += (int) stringObjectMap.get("balls");
+                    timestamps.put(sum * 5, (String) stringObjectMap.get("name"));
+                }
+                for (Map<String, Object> stringObjectMap : player2Map) {
+                    sum += (int) stringObjectMap.get("balls");
+                    timestamps.put(sum * 5, (String) stringObjectMap.get("name"));
+                }
+
+                match.put("timestamps", timestamps);
+                match.put("team1_players", player1Map);
+                match.put("team2_players", player2Map);
                 response.getWriter().write(objectMapper.writeValueAsString(match));
             } else {
                 response.setStatus(404);

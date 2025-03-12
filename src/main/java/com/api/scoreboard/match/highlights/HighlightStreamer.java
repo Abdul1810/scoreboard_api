@@ -1,4 +1,4 @@
-package com.api.scoreboard.match;
+package com.api.scoreboard.match.highlights;
 
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
