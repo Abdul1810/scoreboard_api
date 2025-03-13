@@ -72,7 +72,7 @@ public class MatchListener {
                 "FROM matches m " +
                 "JOIN teams t1 ON m.team1_id = t1.id " +
                 "JOIN teams t2 ON m.team2_id = t2.id " +
-                "ORDER BY m.created_at ASC";
+                "ORDER BY m.id ASC";
 
         Connection conn = null;
         PreparedStatement stmt = null;

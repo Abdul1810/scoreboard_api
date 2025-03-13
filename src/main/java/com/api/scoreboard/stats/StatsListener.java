@@ -73,7 +73,7 @@ public class StatsListener {
     }
 
     public static void addSession(String matchId, Session session) {
-        System.out.println("Adding session: " + session.getId());
+        System.out.println("Total sessions: " + sessions.size());
         System.out.println("For match: " + matchId);
         sessions.put(session.getId(), session);
         matchSessions.putIfAbsent(matchId, new CopyOnWriteArrayList<>());

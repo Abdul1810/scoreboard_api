@@ -18,7 +18,7 @@ public class StatsSocket {
         session.setMaxTextMessageBufferSize(1024 * 1024);
         session.setMaxBinaryMessageBufferSize(10 * 1024 * 1024);
 
-        System.out.println("Open session" + session.getId());
+        System.out.println("Open sessions " + session.getId());
         String matchId = session.getRequestParameterMap().get("id").get(0);
         if (matchId == null) {
             try {
