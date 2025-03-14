@@ -3,6 +3,7 @@ package com.api.scoreboard.stats;
 import com.api.scoreboard.commons.Match;
 import com.api.scoreboard.match.MatchListener;
 import com.api.util.Database;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -37,7 +38,7 @@ public class StatsServlet extends HttpServlet {
             return;
         }
 
-        if (!Arrays.asList("1", "2", "4", "6", "out").contains(updateRequest)) {
+        if (!Arrays.asList("1", "2", "4", "6", "out", "wide", "noball").contains(updateRequest)) {
             response.setStatus(400);
             jsonResponse.put("message", "Invalid update request");
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
@@ -69,6 +70,7 @@ public class StatsServlet extends HttpServlet {
             String winner = rs.getString("winner");
             int activeBatsmanIndex = rs.getInt("active_batsman_index");
             int passiveBatsmanIndex = rs.getInt("passive_batsman_index");
+            int activeBowlerIndex = rs.getInt("active_bowler_index");
             int tournamentId = rs.getInt("tournament_id");
 
             if ("true".equals(isCompleted)) {
@@ -83,11 +85,12 @@ public class StatsServlet extends HttpServlet {
             matchStats.put("current_batting", currentBattingTeam);
             matchStats.put("active_batsman_index", String.valueOf(activeBatsmanIndex));
             matchStats.put("passive_batsman_index", String.valueOf(passiveBatsmanIndex));
+            matchStats.put("active_bowler_index", String.valueOf(activeBowlerIndex));
             matchStats.put("is_completed", isCompleted);
             matchStats.put("highlights_path", rs.getString("highlights_path"));
             matchStats.put("winner", winner);
 
-            query = "SELECT ps.player_id, ps.runs, ps.wickets, ps.team_id, ps.wicketer_id, ps.balls, " +
+            query = "SELECT ps.player_id, ps.runs, ps.wickets, ps.team_id, ps.wicketer_id, ps.balls, ps.fours, ps.sixes, ps.wide_balls, ps.no_balls, " +
                     "w.name AS wicketer_name, p.name AS player_name " +
                     "FROM player_stats ps " +
                     "JOIN team_players tp ON ps.player_id = tp.player_id " +
@@ -107,11 +110,19 @@ public class StatsServlet extends HttpServlet {
             Map<Integer, Integer> team2Wickets = new HashMap<>();
             Map<Integer, String> team1Players = new HashMap<>();
             Map<Integer, String> team2Players = new HashMap<>();
+            Map<Integer, Map<String, Object>> team1PlayersMap = new HashMap<>();
+            Map<Integer, Map<String, Object>> team2PlayersMap = new HashMap<>();
 
             List<String> team1WicketsMap = new ArrayList<>();
             List<String> team2WicketsMap = new ArrayList<>();
             List<Integer> team1BallsMap = new ArrayList<>();
             List<Integer> team2BallsMap = new ArrayList<>();
+            List<Integer> team1FreehitsMap = new ArrayList<>();
+            List<Integer> team2FreehitsMap = new ArrayList<>();
+            List<Integer> team1BattingOrder = new ArrayList<>();
+            List<Integer> team2BattingOrder = new ArrayList<>();
+            List<Integer> team1BowlingOrder = new ArrayList<>();
+            List<Integer> team2BowlingOrder = new ArrayList<>();
             int team1_balls = 0;
             int team2_balls = 0;
             int wicketer_id = -1;
@@ -120,6 +131,10 @@ public class StatsServlet extends HttpServlet {
                 int playerId = rs.getInt("player_id");
                 int runs = rs.getInt("runs");
                 int balls = rs.getInt("balls");
+                int wideBalls = rs.getInt("wide_balls");
+                int noBalls = rs.getInt("no_balls");
+                int fours = rs.getInt("fours");
+                int sixes = rs.getInt("sixes");
                 int wickets = rs.getInt("wickets");
                 int teamId = rs.getInt("team_id");
                 String wicketerName = rs.getString("wicketer_name");
@@ -131,6 +146,7 @@ public class StatsServlet extends HttpServlet {
                     team1WicketsMap.add(wicketerName);
                     team1Players.put(playerId, rs.getString("player_name"));
                     team1BallsMap.add(balls);
+                    team1PlayersMap.put(playerId, Map.of("runs", runs, "balls", balls, "fours", fours, "sixes", sixes, "wickets", wickets, "wide_balls", wideBalls, "no_balls", noBalls));
                 } else if (teamId == team2Id) {
                     team2Scores.put(playerId, runs);
                     team2Wickets.put(playerId, wickets);
@@ -138,6 +154,7 @@ public class StatsServlet extends HttpServlet {
                     team2WicketsMap.add(wicketerName);
                     team2Players.put(playerId, rs.getString("player_name"));
                     team2BallsMap.add(balls);
+                    team2PlayersMap.put(playerId, Map.of("runs", runs, "balls", balls, "fours", fours, "sixes", sixes, "wickets", wickets, "wide_balls", wideBalls, "no_balls", noBalls));
                 }
             }
 
@@ -145,6 +162,23 @@ public class StatsServlet extends HttpServlet {
             team2Scores = sortHashMapWithVals(team2Scores);
             team1Wickets = sortHashMapWithVals(team1Wickets);
             team2Wickets = sortHashMapWithVals(team2Wickets);
+
+            query = "SELECT free_hit_balls, batting_order, bowling_order, team_id FROM team_order WHERE match_id = ?";
+            stmt = conn.prepareStatement(query);
+            stmt.setString(1, matchId);
+            rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                if (team1Id == rs.getInt("team_id")) {
+                    team1FreehitsMap = objectMapper.readValue(rs.getString("free_hit_balls"), ArrayList.class);
+                    team1BattingOrder = objectMapper.readValue(rs.getString("batting_order"), ArrayList.class);
+                    team1BowlingOrder = objectMapper.readValue(rs.getString("bowling_order"), ArrayList.class);
+                } else if (team2Id == rs.getInt("team_id")) {
+                    team2FreehitsMap = objectMapper.readValue(rs.getString("free_hit_balls"), ArrayList.class);
+                    team2BattingOrder = objectMapper.readValue(rs.getString("batting_order"), ArrayList.class);
+                    team2BowlingOrder = objectMapper.readValue(rs.getString("bowling_order"), ArrayList.class);
+                }
+            }
 
             int currentPlayerId = activeBatsmanIndex;
             if (currentPlayerId == -1) {
@@ -158,8 +192,47 @@ public class StatsServlet extends HttpServlet {
             currentPlayerId = "team1".equals(currentBattingTeam) ? (int) team1Scores.keySet().toArray()[currentPlayerId - 1] : (int) team2Scores.keySet().toArray()[currentPlayerId - 1];
             int currentPlayerOldScore = "team1".equals(currentBattingTeam) ? team1Scores.get(currentPlayerId) : team2Scores.get(currentPlayerId);
 
-
-            if (updateRequest.equals("out")) {
+            if (updateRequest.equals("wide")) {
+                if ("team1".equals(currentBattingTeam)) {
+                    int bowlerIndex = updateWicketTaker(team1_balls);
+                    if (bowlerIndex != -1) {
+                        int bowlerId = (int) team2Wickets.keySet().toArray()[bowlerIndex - 1];
+                        Map<String, Object> bowlerStats = new HashMap<>(team2PlayersMap.get(bowlerId));
+                        bowlerStats.put("wide_balls", (int) bowlerStats.get("wide_balls") + 1);
+                        team2PlayersMap.put(bowlerId, bowlerStats);
+                    }
+                } else {
+                    int bowlerIndex = updateWicketTaker(team2_balls);
+                    if (bowlerIndex != -1) {
+                        int bowlerId = (int) team1Wickets.keySet().toArray()[bowlerIndex - 1];
+                        Map<String, Object> bowlerStats = new HashMap<>(team1PlayersMap.get(bowlerId));
+                        bowlerStats.put("wide_balls", (int) bowlerStats.get("wide_balls") + 1);
+                        team1PlayersMap.put(bowlerId, bowlerStats);
+                    }
+                }
+            } else if (updateRequest.equals("noball")) {
+                if ("team1".equals(currentBattingTeam)) {
+                    int bowlerIndex = updateWicketTaker(team1_balls);
+                    if (bowlerIndex != -1) {
+                        int bowlerId = (int) team2Wickets.keySet().toArray()[bowlerIndex - 1];
+                        Map<String, Object> bowlerStats = new HashMap<>(team2PlayersMap.get(bowlerId));
+                        bowlerStats.put("no_balls", (int) bowlerStats.get("no_balls") + 1);
+                        team2PlayersMap.put(bowlerId, bowlerStats);
+                        updateFreehit((team1_balls + 1), team1Id, Integer.parseInt(matchId), team1FreehitsMap);
+                        team1FreehitsMap.add(team1_balls + 1);
+                    }
+                } else {
+                    int bowlerIndex = updateWicketTaker(team2_balls);
+                    if (bowlerIndex != -1) {
+                        int bowlerId = (int) team1Wickets.keySet().toArray()[bowlerIndex - 1];
+                        Map<String, Object> bowlerStats = new HashMap<>(team1PlayersMap.get(bowlerId));
+                        bowlerStats.put("no_balls", (int) bowlerStats.get("no_balls") + 1);
+                        team1PlayersMap.put(bowlerId, bowlerStats);
+                        updateFreehit((team2_balls + 1), team2Id, Integer.parseInt(matchId), team2FreehitsMap);
+                        team2FreehitsMap.add(team2_balls + 1);
+                    }
+                }
+            } else if (updateRequest.equals("out")) {
                 if ("team1".equals(currentBattingTeam)) {
                     team1_balls++;
                     team1BallsMap.set(activeBatsmanIndex - 1, team1BallsMap.get(activeBatsmanIndex - 1) + 1);
@@ -168,33 +241,39 @@ public class StatsServlet extends HttpServlet {
                     team2BallsMap.set(activeBatsmanIndex - 1, team2BallsMap.get(activeBatsmanIndex - 1) + 1);
                 }
                 if ("team1".equals(currentBattingTeam)) {
-                    int bowlerIndex = updateWicketTaker(team1_balls);
-                    if (bowlerIndex != -1) {
-                        int bowlerId = (int) team2Wickets.keySet().toArray()[bowlerIndex - 1];
-                        wicketer_id = bowlerId;
-                        System.out.println("bowlerId: " + bowlerId);
-                        System.out.println("bowlerIndex: " + bowlerIndex);
-                        team2Wickets.put(bowlerId, team2Wickets.getOrDefault(bowlerId, 0) + 1);
-                        team1WicketsMap.set(activeBatsmanIndex - 1, team2Players.get(bowlerId));
-                        for (int i = 0; i < team1WicketsMap.size(); i++) {
-                            if (team1WicketsMap.get(i) == null && i != passiveBatsmanIndex - 1) {
-                                activeBatsmanIndex = i + 1;
-                                break;
-                            }
+                    if (!team1FreehitsMap.contains(team1_balls)) {
+                        int bowlerIndex = updateWicketTaker(team1_balls);
+                        if (bowlerIndex != -1) {
+                            int bowlerId = (int) team2Wickets.keySet().toArray()[bowlerIndex - 1];
+                            wicketer_id = bowlerId;
+                            System.out.println("bowlerId: " + bowlerId);
+                            System.out.println("bowlerIndex: " + bowlerIndex);
+                            team2Wickets.put(bowlerId, team2Wickets.getOrDefault(bowlerId, 0) + 1);
+                            team1WicketsMap.set(activeBatsmanIndex - 1, team2Players.get(bowlerId));
+                            activeBatsmanIndex = -1;
+//                            for (int i = 0; i < team1WicketsMap.size(); i++) {
+//                                if (team1WicketsMap.get(i) == null && i != passiveBatsmanIndex - 1) {
+//                                    activeBatsmanIndex = i + 1;
+//                                    break;
+//                                }
+//                            }
                         }
                     }
                 } else {
-                    int bowlerIndex = updateWicketTaker(team2_balls);
-                    if (bowlerIndex != -1) {
-                        int bowlerId = (int) team1Wickets.keySet().toArray()[bowlerIndex - 1];
-                        wicketer_id = bowlerId;
-                        team1Wickets.put(bowlerId, team1Wickets.getOrDefault(bowlerId, 0) + 1);
-                        team2WicketsMap.set(activeBatsmanIndex - 1, team1Players.get(bowlerId));
-                        for (int i = 0; i < team2WicketsMap.size(); i++) {
-                            if (team2WicketsMap.get(i) == null && i != passiveBatsmanIndex - 1) {
-                                activeBatsmanIndex = i + 1;
-                                break;
-                            }
+                    if (!team2FreehitsMap.contains(team2_balls)) {
+                        int bowlerIndex = updateWicketTaker(team2_balls);
+                        if (bowlerIndex != -1) {
+                            int bowlerId = (int) team1Wickets.keySet().toArray()[bowlerIndex - 1];
+                            wicketer_id = bowlerId;
+                            team1Wickets.put(bowlerId, team1Wickets.getOrDefault(bowlerId, 0) + 1);
+                            team2WicketsMap.set(activeBatsmanIndex - 1, team1Players.get(bowlerId));
+                            activeBatsmanIndex = -1;
+//                            for (int i = 0; i < team2WicketsMap.size(); i++) {
+//                                if (team2WicketsMap.get(i) == null && i != passiveBatsmanIndex - 1) {
+//                                    activeBatsmanIndex = i + 1;
+//                                    break;
+//                                }
+//                            }
                         }
                     }
                 }
@@ -203,10 +282,12 @@ public class StatsServlet extends HttpServlet {
                     int temp = activeBatsmanIndex;
                     activeBatsmanIndex = passiveBatsmanIndex;
                     passiveBatsmanIndex = temp;
+                    activeBowlerIndex = -1;
                 } else if (currentBattingTeam.equals("team2") && team2_balls % 6 == 0) {
                     int temp = activeBatsmanIndex;
                     activeBatsmanIndex = passiveBatsmanIndex;
                     passiveBatsmanIndex = temp;
+                    activeBowlerIndex = -1;
                 }
             } else {
                 if ("team1".equals(currentBattingTeam)) {
@@ -216,6 +297,7 @@ public class StatsServlet extends HttpServlet {
                         int temp = activeBatsmanIndex;
                         activeBatsmanIndex = passiveBatsmanIndex;
                         passiveBatsmanIndex = temp;
+                        activeBowlerIndex = -1;
                     }
                 } else {
                     team2_balls++;
@@ -224,6 +306,7 @@ public class StatsServlet extends HttpServlet {
                         int temp = activeBatsmanIndex;
                         activeBatsmanIndex = passiveBatsmanIndex;
                         passiveBatsmanIndex = temp;
+                        activeBowlerIndex = -1;
                     }
                 }
                 if ("team1".equals(currentBattingTeam)) {
@@ -232,6 +315,14 @@ public class StatsServlet extends HttpServlet {
                         int temp = activeBatsmanIndex;
                         activeBatsmanIndex = passiveBatsmanIndex;
                         passiveBatsmanIndex = temp;
+                    } else if ("4".equals(updateRequest)) {
+                        Map<String, Object> playerStats = new HashMap<>(team1PlayersMap.get(currentPlayerId));
+                        playerStats.put("fours", (int) playerStats.get("fours") + 1);
+                        team1PlayersMap.put(currentPlayerId, playerStats);
+                    } else if ("6".equals(updateRequest)) {
+                        Map<String, Object> playerStats = new HashMap<>(team1PlayersMap.get(currentPlayerId));
+                        playerStats.put("sixes", (int) playerStats.get("sixes") + 1);
+                        team1PlayersMap.put(currentPlayerId, playerStats);
                     }
                 } else {
                     team2Scores.put(currentPlayerId, Integer.parseInt(updateRequest) + currentPlayerOldScore);
@@ -239,6 +330,14 @@ public class StatsServlet extends HttpServlet {
                         int temp = activeBatsmanIndex;
                         activeBatsmanIndex = passiveBatsmanIndex;
                         passiveBatsmanIndex = temp;
+                    } else if ("4".equals(updateRequest)) {
+                        Map<String, Object> playerStats = new HashMap<>(team2PlayersMap.get(currentPlayerId));
+                        playerStats.put("fours", (int) playerStats.get("fours") + 1);
+                        team2PlayersMap.put(currentPlayerId, playerStats);
+                    } else if ("6".equals(updateRequest)) {
+                        Map<String, Object> playerStats = new HashMap<>(team2PlayersMap.get(currentPlayerId));
+                        playerStats.put("sixes", (int) playerStats.get("sixes") + 1);
+                        team2PlayersMap.put(currentPlayerId, playerStats);
                     }
                 }
             }
@@ -276,23 +375,12 @@ public class StatsServlet extends HttpServlet {
                 }
             }
 
-            System.out.println("matchStats: " + matchStats);
-            System.out.println("team1Scores: " + team1Scores);
-            System.out.println("team2Scores: " + team2Scores);
-            System.out.println("team1Wickets: " + team1Wickets);
-            System.out.println("team2Wickets: " + team2Wickets);
-            System.out.println("activeBatsmanIndex: " + activeBatsmanIndex);
-            System.out.println("passiveBatsmanIndex: " + passiveBatsmanIndex);
-            System.out.println("wicketer_id: " + wicketer_id);
-            System.out.println("team1_balls: " + team1_balls);
-            System.out.println("team2_balls: " + team2_balls);
-            System.out.println("team1WicketsMap: " + team1WicketsMap);
-            System.out.println("team2WicketsMap: " + team2WicketsMap);
-            System.out.println("team1BallsMap: " + team1BallsMap);
-            System.out.println("team2BallsMap: " + team2BallsMap);
-
-            updateMatchStats(matchStats, team1Scores, team2Scores, team1Wickets, team2Wickets, activeBatsmanIndex, passiveBatsmanIndex, wicketer_id, team1BallsMap, team2BallsMap, currentPlayerId);
+            updateMatchStats(matchStats, team1Scores, team2Scores, team1Wickets, team2Wickets, activeBatsmanIndex, passiveBatsmanIndex, activeBowlerIndex, wicketer_id, team1BallsMap, team2BallsMap, currentPlayerId, team1PlayersMap, team2PlayersMap);
             Map<String, Object> matchData = new HashMap<>();
+            int team1_wide_runs = team2PlayersMap.values().stream().mapToInt(player -> (int) player.get("wide_balls")).sum();
+            int team2_wide_runs = team1PlayersMap.values().stream().mapToInt(player -> (int) player.get("wide_balls")).sum();
+            int team1_no_balls = team2PlayersMap.values().stream().mapToInt(player -> (int) player.get("no_balls")).sum();
+            int team2_no_balls = team1PlayersMap.values().stream().mapToInt(player -> (int) player.get("no_balls")).sum();
 
             matchData.put("id", matchStats.get("id"));
             matchData.put("current_batting", matchStats.get("current_batting"));
@@ -301,8 +389,9 @@ public class StatsServlet extends HttpServlet {
             matchData.put("winner", matchStats.get("winner"));
             matchData.put("active_batsman_index", activeBatsmanIndex);
             matchData.put("passive_batsman_index", passiveBatsmanIndex);
-            matchData.put("team1_score", team1Scores.values().stream().mapToInt(Integer::intValue).sum());
-            matchData.put("team2_score", team2Scores.values().stream().mapToInt(Integer::intValue).sum());
+            matchData.put("active_bowler_index", activeBowlerIndex);
+            matchData.put("team1_score", team1Scores.values().stream().mapToInt(Integer::intValue).sum() + team1_wide_runs + team1_no_balls);
+            matchData.put("team2_score", team2Scores.values().stream().mapToInt(Integer::intValue).sum() + team2_wide_runs + team2_no_balls);
             matchData.put("team1_wickets", team1Wickets.values().stream().mapToInt(Integer::intValue).sum());
             matchData.put("team2_wickets", team2Wickets.values().stream().mapToInt(Integer::intValue).sum());
             matchData.put("team1_runs", team1Scores);
@@ -315,6 +404,12 @@ public class StatsServlet extends HttpServlet {
             matchData.put("team2_wickets_map", team2WicketsMap);
             matchData.put("team1_balls_map", team1BallsMap);
             matchData.put("team2_balls_map", team2BallsMap);
+            matchData.put("team1_freehits_map", team1FreehitsMap);
+            matchData.put("team2_freehits_map", team2FreehitsMap);
+            matchData.put("team1_batting_order", team1BattingOrder);
+            matchData.put("team2_batting_order", team2BattingOrder);
+            matchData.put("team1_bowling_order", team1BowlingOrder);
+            matchData.put("team2_bowling_order", team2BowlingOrder);
 
             StatsListener.fireStatsUpdate(matchId, objectMapper.writeValueAsString(matchData));
             response.setStatus(200);
@@ -339,23 +434,24 @@ public class StatsServlet extends HttpServlet {
         }
     }
 
-    private void updateMatchStats(Map<String, String> matchStats, Map<Integer, Integer> team1Scores, Map<Integer, Integer> team2Scores, Map<Integer, Integer> team1Wickets, Map<Integer, Integer> team2Wickets, int activeBatsmanIndex, int passiveBatsmanIndex, int wicketer_id, List<Integer> team1BallsMap, List<Integer> team2BallsMap, int currentPlayerId) {
+    private void updateMatchStats(Map<String, String> matchStats, Map<Integer, Integer> team1Scores, Map<Integer, Integer> team2Scores, Map<Integer, Integer> team1Wickets, Map<Integer, Integer> team2Wickets, int activeBatsmanIndex, int passiveBatsmanIndex, int activeBowlerIndex, int wicketer_id, List<Integer> team1BallsMap, List<Integer> team2BallsMap, int currentPlayerId, Map<Integer, Map<String, Object>> team1PlayersMap, Map<Integer, Map<String, Object>> team2PlayersMap) {
         Connection conn = null;
         PreparedStatement stmt = null;
 
         try {
             conn = Database.getConnection();
-            String query = "UPDATE matches SET current_batting = ?, is_completed = ?, winner = ?, active_batsman_index = ?, passive_batsman_index = ? WHERE id = ?";
+            String query = "UPDATE matches SET current_batting = ?, is_completed = ?, winner = ?, active_batsman_index = ?, passive_batsman_index = ?, active_bowler_index = ? WHERE id = ?";
             stmt = conn.prepareStatement(query);
             stmt.setString(1, matchStats.get("current_batting"));
             stmt.setString(2, matchStats.get("is_completed"));
             stmt.setString(3, matchStats.get("winner"));
             stmt.setInt(4, activeBatsmanIndex);
             stmt.setInt(5, passiveBatsmanIndex);
-            stmt.setInt(6, Integer.parseInt(matchStats.get("id")));
+            stmt.setInt(6, activeBowlerIndex);
+            stmt.setInt(7, Integer.parseInt(matchStats.get("id")));
             stmt.executeUpdate();
 
-            query = "UPDATE player_stats SET runs = ?, balls = ?, wickets = ? WHERE match_id = ? AND player_id = ?";
+            query = "UPDATE player_stats SET runs = ?, balls = ?, wickets = ?, wide_balls = ?, no_balls = ?, fours = ?, sixes = ? WHERE match_id = ? AND player_id = ?";
 
             stmt = conn.prepareStatement(query);
             int i = 0;
@@ -363,8 +459,12 @@ public class StatsServlet extends HttpServlet {
                 stmt.setInt(1, entry.getValue());
                 stmt.setInt(2, team1BallsMap.get(i));
                 stmt.setInt(3, team1Wickets.get(entry.getKey()));
-                stmt.setInt(4, Integer.parseInt(matchStats.get("id")));
-                stmt.setInt(5, entry.getKey());
+                stmt.setInt(4, (int) team1PlayersMap.get(entry.getKey()).get("wide_balls"));
+                stmt.setInt(5, (int) team1PlayersMap.get(entry.getKey()).get("no_balls"));
+                stmt.setInt(6, (int) team1PlayersMap.get(entry.getKey()).get("fours"));
+                stmt.setInt(7, (int) team1PlayersMap.get(entry.getKey()).get("sixes"));
+                stmt.setInt(8, Integer.parseInt(matchStats.get("id")));
+                stmt.setInt(9, entry.getKey());
                 stmt.addBatch();
                 i++;
             }
@@ -374,8 +474,12 @@ public class StatsServlet extends HttpServlet {
                 stmt.setInt(1, entry.getValue());
                 stmt.setInt(2, team2BallsMap.get(i));
                 stmt.setInt(3, team2Wickets.get(entry.getKey()));
-                stmt.setInt(4, Integer.parseInt(matchStats.get("id")));
-                stmt.setInt(5, entry.getKey());
+                stmt.setInt(4, (int) team2PlayersMap.get(entry.getKey()).get("wide_balls"));
+                stmt.setInt(5, (int) team2PlayersMap.get(entry.getKey()).get("no_balls"));
+                stmt.setInt(6, (int) team2PlayersMap.get(entry.getKey()).get("fours"));
+                stmt.setInt(7, (int) team2PlayersMap.get(entry.getKey()).get("sixes"));
+                stmt.setInt(8, Integer.parseInt(matchStats.get("id")));
+                stmt.setInt(9, entry.getKey());
                 stmt.addBatch();
                 i++;
             }
@@ -393,6 +497,32 @@ public class StatsServlet extends HttpServlet {
 
         } catch (SQLException e) {
             System.out.println("Error updating match stats: " + e.getMessage());
+        } finally {
+            try {
+                if (stmt != null) stmt.close();
+                if (conn != null) conn.close();
+            } catch (SQLException e) {
+                System.err.println("Error closing resources: " + e.getMessage());
+            }
+        }
+    }
+
+    private void updateFreehit(int ballCount, int teamId, int matchId, List<Integer> ballList) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        try {
+            conn = Database.getConnection();
+            ballList.add(ballCount);
+            String query = "UPDATE team_order SET free_hit_balls = ? WHERE match_id = ? AND team_id = ?";
+            stmt = conn.prepareStatement(query);
+            stmt.setString(1, objectMapper.writeValueAsString(ballList));
+            stmt.setInt(2, matchId);
+            stmt.setInt(3, teamId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error updating free hit: " + e.getMessage());
+        } catch (JsonProcessingException e) {
+            System.out.println("Error processing JSON: " + e.getMessage());
         } finally {
             try {
                 if (stmt != null) stmt.close();
@@ -451,21 +581,10 @@ public class StatsServlet extends HttpServlet {
             stmt.setInt(1, tournamentId);
 
             rs = stmt.executeQuery();
-//          query = "UPDATE tournament_teams SET status = 'eliminated' WHERE tournament_id = ? AND team_id = ?";
-//          stmt = conn.prepareStatement(query);
-//          stmt.setInt(1, tournamentId);
-//          stmt.setInt(2, lossingTeamId);
-//          stmt.executeUpdate();
             if (rs.next()) {
                 int oldWinnerId = rs.getInt("team_id");
                 Match.create(conn, oldWinnerId, winningTeamId, tournamentId);
                 conn = Database.getConnection();
-//                query = "INSERT INTO tournament_matches (tournament_id, match_id) VALUES (?, ?)";
-//                stmt = conn.prepareStatement(query);
-//                stmt.setInt(1, tournamentId);
-//                stmt.setInt(2, newMatchId);
-//                stmt.executeUpdate();
-
                 query = "DELETE FROM tournament_winners WHERE tournament_id = ?";
                 stmt = conn.prepareStatement(query);
                 stmt.setInt(1, tournamentId);
@@ -478,10 +597,6 @@ public class StatsServlet extends HttpServlet {
                 stmt.setInt(2, winningTeamId);
                 stmt.executeUpdate();
 
-//                query = "SELECT COUNT(*) AS total_teams FROM tournament_teams WHERE tournament_id = ? AND status = 'active'";
-//                stmt = conn.prepareStatement(query);
-//                stmt.setInt(1, tournamentId);
-//                rs = stmt.executeQuery();
                 query = "SELECT COUNT(*) AS total_teams FROM matches WHERE tournament_id = ? AND is_completed = 'false'";
                 stmt = conn.prepareStatement(query);
                 stmt.setInt(1, tournamentId);
