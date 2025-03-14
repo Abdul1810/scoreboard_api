@@ -4,148 +4,212 @@ import com.api.scoreboard.stats.StatsListener;
 import com.api.scoreboard.match.MatchListener;
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 
-import java.io.IOException;
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
+import java.awt.image.BufferedImage;
+import java.io.*;
 import java.sql.*;
 import java.util.*;
 
 @WebServlet("/api/teams")
+@MultipartConfig(
+        fileSizeThreshold = 1024 * 1024 * 10,
+        maxFileSize = 1024 * 1024 * 100,
+        maxRequestSize = 1024 * 1024 * 150
+)
 public class TeamServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> jsonResponse = new HashMap<>();
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        Map<String, Object> team = objectMapper.readValue(request.getReader(), HashMap.class);
-        System.out.println(team);
-
-        Optional<String> name = Optional.ofNullable((String) team.get("name"));
-        if (!team.containsKey("players")) {
-            response.setStatus(400);
-            jsonResponse.put("message", "Invalid request body");
-            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-            return;
-        }
-
-        List<String> players = (List<String>) team.get("players");
-
-        if (name.get().isEmpty() || name.get().trim().isEmpty()) {
-            response.setStatus(400);
-            jsonResponse.put("message", "Invalid team name");
-            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-            return;
-        }
-
-        if (players.isEmpty() || players.size() < 11) {
-            response.setStatus(400);
-            jsonResponse.put("message", "Invalid number of players");
-            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-            return;
-        }
-
-        for (int i = 0; i < 11; i++) {
-            if (players.get(i) == null || players.get(i).trim().isEmpty()) {
-                response.setStatus(400);
-                jsonResponse.put("message", "Invalid player name at index " + i);
-                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-                return;
-            }
-        }
-
-        Connection conn = null;
-        PreparedStatement checkStmt = null;
-        ResultSet rs = null;
+        response.setContentType("application/json");
+        Map<String, Object> jsonResponse = new HashMap<>();
 
         try {
-            conn = Database.getConnection();
-
-            String checkQuery = "SELECT id FROM teams WHERE name = ?";
-            checkStmt = conn.prepareStatement(checkQuery);
-            checkStmt.setString(1, name.get());
-            rs = checkStmt.executeQuery();
-
-            if (rs.next()) {
-                jsonResponse.put("message", "Team already exists");
+            if (!request.getContentType().toLowerCase().startsWith("multipart/")) {
                 response.setStatus(400);
-                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+                jsonResponse.put("message", "Invalid request type");
+                response.getWriter().write(new ObjectMapper().writeValueAsString(jsonResponse));
                 return;
             }
-        } catch (Exception e) {
-            jsonResponse.put("message", "Database error: " + e.getMessage());
-            response.setStatus(500);
-            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-            return;
-        } finally {
-            try {
-                if (rs != null) rs.close();
-                if (checkStmt != null) checkStmt.close();
-            } catch (Exception e) {
-                System.err.println("Error closing resources: " + e.getMessage());
-            }
-        }
 
-        PreparedStatement insertPlayerStmt = null;
-        PreparedStatement insertTeamStmt = null;
-        PreparedStatement insertTeamPlayerStmt = null;
-        ResultSet generatedKeys = null;
+            String teamName = request.getParameter("name");
+            String[] players = request.getParameterValues("players");
 
-        try {
-            String insertPlayerQuery = "INSERT INTO players (name) VALUES (?)";
-            insertPlayerStmt = conn.prepareStatement(insertPlayerQuery, Statement.RETURN_GENERATED_KEYS);
-
-            List<Integer> playerIds = new ArrayList<>();
-            for (String playerName : players) {
-                insertPlayerStmt.setString(1, playerName);
-                insertPlayerStmt.addBatch();
-            }
-            insertPlayerStmt.executeBatch();
-
-            generatedKeys = insertPlayerStmt.getGeneratedKeys();
-            while (generatedKeys.next()) {
-                playerIds.add(generatedKeys.getInt(1));
+            if (teamName == null || teamName.trim().isEmpty()) {
+                response.setStatus(400);
+                jsonResponse.put("message", "Invalid team name");
+                response.getWriter().write(new ObjectMapper().writeValueAsString(jsonResponse));
+                return;
             }
 
-            String insertTeamQuery = "INSERT INTO teams (name) VALUES (?)";
-            insertTeamStmt = conn.prepareStatement(insertTeamQuery, Statement.RETURN_GENERATED_KEYS);
-            insertTeamStmt.setString(1, name.get());
-            insertTeamStmt.executeUpdate();
-
-            int teamId = 0;
-            generatedKeys = insertTeamStmt.getGeneratedKeys();
-            if (generatedKeys.next()) {
-                teamId = generatedKeys.getInt(1);
+            if (players == null || players.length < 11) {
+                response.setStatus(400);
+                jsonResponse.put("message", "Invalid number of players");
+                response.getWriter().write(new ObjectMapper().writeValueAsString(jsonResponse));
+                return;
             }
-
-            String insertTeamPlayerQuery = "INSERT INTO team_players (team_id, player_id, player_position) VALUES (?, ?, ?)";
-            insertTeamPlayerStmt = conn.prepareStatement(insertTeamPlayerQuery);
 
             for (int i = 0; i < 11; i++) {
-                insertTeamPlayerStmt.setInt(1, teamId);
-                insertTeamPlayerStmt.setInt(2, playerIds.get(i));
-                insertTeamPlayerStmt.setInt(3, i + 1); // Assuming positions are 1-based
-                insertTeamPlayerStmt.addBatch();
+                if (players[i] == null || players[i].trim().isEmpty()) {
+                    response.setStatus(400);
+                    jsonResponse.put("message", "Invalid player name at index " + i);
+                    response.getWriter().write(new ObjectMapper().writeValueAsString(jsonResponse));
+                    return;
+                }
             }
-            insertTeamPlayerStmt.executeBatch();
 
-            jsonResponse.put("message", "Team created successfully");
-            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-        } catch (SQLException e) {
-            jsonResponse.put("message", "Database error: " + e.getMessage());
-            response.setStatus(500);
-            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-        } finally {
-            try {
-                if (generatedKeys != null) generatedKeys.close();
-                if (insertPlayerStmt != null) insertPlayerStmt.close();
-                if (insertTeamStmt != null) insertTeamStmt.close();
-                if (insertTeamPlayerStmt != null) insertTeamPlayerStmt.close();
-            } catch (SQLException e) {
-                System.err.println("Error closing resources: " + e.getMessage());
+            Part teamLogoPart = request.getPart("logo");
+            List<Part> playerAvatarParts = new ArrayList<>();
+            for (Part part : request.getParts()) {
+                if ("avatars".equals(part.getName())) {
+                    playerAvatarParts.add(part);
+                }
             }
+
+            String teamLogoPath = saveImageFile(teamLogoPart, "teams");
+            List<String> playerAvatarPaths = new ArrayList<>();
+            for (Part part : playerAvatarParts) {
+                playerAvatarPaths.add(saveImageFile(part, "players"));
+            }
+
+            try (Connection conn = Database.getConnection()) {
+                if (isTeamExists(conn, teamName)) {
+                    jsonResponse.put("message", "Team already exists");
+                    response.setStatus(400);
+                    response.getWriter().write(new ObjectMapper().writeValueAsString(jsonResponse));
+                    return;
+                }
+
+                List<Integer> playerIds = insertPlayers(conn, players, playerAvatarPaths);
+                int teamId = insertTeam(conn, teamName, teamLogoPath);
+                linkPlayersToTeam(conn, teamId, playerIds);
+
+                jsonResponse.put("message", "Team created successfully");
+                response.setStatus(201);
+                response.getWriter().write(new ObjectMapper().writeValueAsString(jsonResponse));
+            }
+        } catch (Exception e) {
+            jsonResponse.put("message", "Server error: " + e.getMessage());
+            response.setStatus(500);
+            response.getWriter().write(new ObjectMapper().writeValueAsString(jsonResponse));
+        }
+    }
+
+    private String saveImageFile(Part part, String type) throws IOException {
+        if (part == null || part.getSize() <= 0) {
+            return "placeholder.png";
+        }
+
+        String uploadDir = "F:\\Code\\JAVA\\zoho_training\\uploads\\" + type + "\\";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+
+        String fileExtension = getFileExtension(part);
+        String fileName = System.currentTimeMillis() + fileExtension;
+        File file = new File(dir, fileName);
+
+        BufferedImage image = ImageIO.read(part.getInputStream());
+        if (image != null) {
+            try (FileOutputStream fos = new FileOutputStream(file);
+                 BufferedOutputStream bos = new BufferedOutputStream(fos)) {
+                ImageWriter writer = ImageIO.getImageWritersByFormatName("jpg").next();
+                ImageOutputStream ios = ImageIO.createImageOutputStream(bos);
+                writer.setOutput(ios);
+
+                ImageWriteParam param = writer.getDefaultWriteParam();
+                if (param.canWriteCompressed()) {
+                    param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+                    param.setCompressionQuality(0.5f);
+                }
+
+                writer.write(null, new IIOImage(image, null, null), param);
+                ios.close();
+                writer.dispose();
+            }
+        }
+
+        return fileName;
+    }
+
+    private String getFileExtension(Part part) {
+        String contentDisp = part.getHeader("content-disposition");
+        for (String content : contentDisp.split(";")) {
+            if (content.trim().startsWith("filename")) {
+                String fileName = content.substring(content.indexOf("=") + 2, content.length() - 1);
+                return fileName.substring(fileName.lastIndexOf("."));
+            }
+        }
+        return "";
+    }
+
+    private boolean isTeamExists(Connection conn, String teamName) throws SQLException {
+        String checkQuery = "SELECT id FROM teams WHERE name = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(checkQuery)) {
+            stmt.setString(1, teamName);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next();
+        }
+    }
+
+    private List<Integer> insertPlayers(Connection conn, String[] players, List<String> avatarPaths) throws SQLException {
+        String insertPlayerQuery = "INSERT INTO players (name, avatar) VALUES (?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(insertPlayerQuery, Statement.RETURN_GENERATED_KEYS)) {
+            for (int i = 0; i < players.length; i++) {
+                stmt.setString(1, players[i]);
+                stmt.setString(2, avatarPaths.size() > i ? avatarPaths.get(i) : "placeholder.png");
+                stmt.addBatch();
+            }
+            stmt.executeBatch();
+
+            List<Integer> playerIds = new ArrayList<>();
+            ResultSet keys = stmt.getGeneratedKeys();
+            while (keys.next()) {
+                playerIds.add(keys.getInt(1));
+            }
+            return playerIds;
+        }
+    }
+
+    private int insertTeam(Connection conn, String teamName, String logoPath) throws SQLException {
+        String insertTeamQuery = "INSERT INTO teams (name, logo) VALUES (?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(insertTeamQuery, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setString(1, teamName);
+            stmt.setString(2, logoPath);
+            stmt.executeUpdate();
+
+            ResultSet keys = stmt.getGeneratedKeys();
+            if (keys.next()) {
+                return keys.getInt(1);
+            } else {
+                throw new SQLException("Failed to insert team");
+            }
+        }
+    }
+
+    private void linkPlayersToTeam(Connection conn, int teamId, List<Integer> playerIds) throws SQLException {
+        String insertTeamPlayerQuery = "INSERT INTO team_players (team_id, player_id, player_position) VALUES (?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(insertTeamPlayerQuery)) {
+            for (int i = 0; i < playerIds.size(); i++) {
+                stmt.setInt(1, teamId);
+                stmt.setInt(2, playerIds.get(i));
+                stmt.setInt(3, i + 1);
+                stmt.addBatch();
+            }
+            stmt.executeBatch();
         }
     }
 
@@ -160,8 +224,7 @@ public class TeamServlet extends HttpServlet {
             conn = Database.getConnection();
 
             if (matchId == null) {
-                // Fetch all teams
-                String query = "SELECT t.id, t.name FROM teams t";
+                String query = "SELECT t.id, t.name, t.logo FROM teams t";
                 stmt = conn.prepareStatement(query);
                 rs = stmt.executeQuery();
 
@@ -171,8 +234,8 @@ public class TeamServlet extends HttpServlet {
                     int teamId = rs.getInt("id");
                     team.put("id", teamId);
                     team.put("name", rs.getString("name"));
+                    team.put("logo", "http://localhost:8080/image?type=team&name=" + rs.getString("logo"));
 
-                    // Fetch players for the team using team_players table
                     String playerQuery = "SELECT p.name FROM team_players tp JOIN players p ON tp.player_id = p.id WHERE tp.team_id = ?";
                     try (PreparedStatement playerStmt = conn.prepareStatement(playerQuery)) {
                         playerStmt.setInt(1, teamId);
@@ -183,14 +246,11 @@ public class TeamServlet extends HttpServlet {
                         }
                         team.put("players", players);
                     }
-
                     teams.add(team);
                 }
-
                 response.getWriter().write(objectMapper.writeValueAsString(teams));
             } else {
-                // Fetch a specific team
-                String query = "SELECT t.id, t.name FROM teams t WHERE t.id = ?";
+                String query = "SELECT t.id, t.name, t.logo FROM teams t WHERE t.id = ?";
                 stmt = conn.prepareStatement(query);
                 stmt.setInt(1, Integer.parseInt(matchId));
                 rs = stmt.executeQuery();
@@ -200,15 +260,18 @@ public class TeamServlet extends HttpServlet {
                     int teamId = rs.getInt("id");
                     team.put("id", teamId);
                     team.put("name", rs.getString("name"));
+                    team.put("logo", "http://localhost:8080/image?type=team&name=" + rs.getString("logo"));
 
-                    // Fetch players for the team using team_players table
-                    String playerQuery = "SELECT p.name FROM team_players tp JOIN players p ON tp.player_id = p.id WHERE tp.team_id = ?";
+                    String playerQuery = "SELECT p.name, p.avatar FROM team_players tp JOIN players p ON tp.player_id = p.id WHERE tp.team_id = ?";
                     try (PreparedStatement playerStmt = conn.prepareStatement(playerQuery)) {
                         playerStmt.setInt(1, teamId);
                         ResultSet playerRs = playerStmt.executeQuery();
-                        List<String> players = new ArrayList<>();
+                        List<Map<String, String>> players = new ArrayList<>();
                         while (playerRs.next()) {
-                            players.add(playerRs.getString("name"));
+                            Map<String, String> player = new HashMap<>();
+                            player.put("name", playerRs.getString("name"));
+                            player.put("avatar", "http://localhost:8080/image?type=player&name=" + playerRs.getString("avatar"));
+                            players.add(player);
                         }
                         team.put("players", players);
                     }

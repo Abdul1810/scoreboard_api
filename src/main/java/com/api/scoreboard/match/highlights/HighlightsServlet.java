@@ -29,7 +29,7 @@ import java.util.Map;
         maxRequestSize = 1024 * 1024 * 150
 )
 public class HighlightsServlet extends HttpServlet {
-    private static final String UPLOAD_DIRECTORY = "F:\\Code\\JAVA\\zoho_training\\uploads";
+    private static final String UPLOAD_DIRECTORY = "F:\\Code\\JAVA\\zoho_training\\uploads\\highlights";
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> jsonResponse = new HashMap<>();
 

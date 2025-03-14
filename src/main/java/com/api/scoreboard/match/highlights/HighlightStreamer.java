@@ -10,7 +10,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-@WebServlet("/video")
+@WebServlet("/video/highlights")
 public class HighlightStreamer extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) {
@@ -20,7 +20,7 @@ public class HighlightStreamer extends HttpServlet {
             return;
         }
 
-        File videoFile = new File("F:\\Code\\JAVA\\zoho_training\\uploads\\" + videoName);
+        File videoFile = new File("F:\\Code\\JAVA\\zoho_training\\uploads\\highlights\\" + videoName);
         if (!videoFile.exists()) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;

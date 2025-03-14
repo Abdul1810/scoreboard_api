@@ -30,11 +30,81 @@ public class ChangeBatsman extends HttpServlet {
         ResultSet rs = null;
 
         try {
-            // check matches table for active_batsman_index
             conn = Database.getConnection();
             stmt = conn.prepareStatement("SELECT * FROM matches WHERE id = ?");
             stmt.setString(1, matchId);
             rs = stmt.executeQuery();
+
+            if (newPlayerIndex == "" && passivePlayerIndex != "") {
+                // set only passive player
+                // first chefck passive player is out or not
+                // if not then set passive player
+                if (rs.next()) {
+                    int passiveBatsmanIndex = rs.getInt("passive_batsman_index");
+                    if (passiveBatsmanIndex != -1) {
+                        jsonResponse.put("error", "Passive batsman already set");
+                        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        return;
+                    } else {
+                        int teamId = rs.getString("current_batting").equals("team1") ? rs.getInt("team1_id") : rs.getInt("team2_id");
+                        String query = "SELECT * FROM player_stats WHERE team_id = ? AND match_id = ? ORDER BY id";
+                        stmt = conn.prepareStatement(query);
+                        stmt.setInt(1, teamId);
+                        stmt.setString(2, matchId);
+                        rs = stmt.executeQuery();
+
+                        List<Boolean> playerStatus = new ArrayList<>();
+                        while (rs.next()) {
+                            playerStatus.add(rs.getInt("wicketer_id") > 0);
+                        }
+
+                        if (playerStatus.get((Integer.parseInt(passivePlayerIndex) - 1))) {
+                            jsonResponse.put("error", "Passive player already out");
+                            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                            return;
+                        }
+
+                        stmt = conn.prepareStatement("UPDATE matches SET passive_batsman_index = ? WHERE id = ?");
+                        stmt.setInt(1, Integer.parseInt(passivePlayerIndex));
+                        stmt.setString(2, matchId);
+                        stmt.executeUpdate();
+
+                        stmt = conn.prepareStatement("SELECT * FROM team_order WHERE match_id = ? AND team_id = ?");
+                        stmt.setString(1, matchId);
+                        stmt.setInt(2, teamId);
+                        rs = stmt.executeQuery();
+                        if (rs.next()) {
+                            String battingOrder = rs.getString("batting_order");
+                            List<Integer> battingOrderList = objectMapper.readValue(battingOrder, List.class);
+                            int index = battingOrderList.indexOf(-1);
+                            if (index == -1) {
+                                jsonResponse.put("error", "No empty slot in batting order");
+                                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                                return;
+                            }
+                            battingOrderList.set(index, Integer.parseInt(passivePlayerIndex));
+
+                            stmt = conn.prepareStatement("UPDATE team_order SET batting_order = ? WHERE match_id = ? AND team_id = ?");
+                            stmt.setString(1, battingOrderList.toString());
+                            stmt.setString(2, matchId);
+                            stmt.setInt(3, teamId);
+                            stmt.executeUpdate();
+                        }
+
+                        jsonResponse.put("message", "Batsman updated successfully");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        StatsListener.fireStatsUpdate(matchId);
+                    }
+                } else {
+                    jsonResponse.put("error", "Match not found");
+                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                    return;
+                }
+                response
+                        .getWriter()
+                        .write(objectMapper.writeValueAsString(jsonResponse));
+                return;
+            }
 
             if (rs.next()) {
                 int activeBatsmanIndex = rs.getInt("active_batsman_index");

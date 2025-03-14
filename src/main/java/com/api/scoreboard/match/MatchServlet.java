@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.io.File;
 import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
@@ -237,13 +238,26 @@ public class MatchServlet extends HttpServlet {
                 return;
             }
 
-            // Delete from player_stats table
+            String query = "SELECT * FROM matches WHERE id = ?";
+            deleteMatchStmt = conn.prepareStatement(query);
+            deleteMatchStmt.setInt(1, matchIdInt);
+            ResultSet rs = deleteMatchStmt.executeQuery();
+
+            if (!rs.next()) {
+                jsonResponse.put("message", "Match not found");
+                response.setStatus(404);
+                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+                return;
+            }
+
+            String highlightsPath = rs.getString("highlights_path");
+            String bannerPath = rs.getString("banner_path");
+
             String deletePlayerStatsQuery = "DELETE FROM player_stats WHERE match_id = ?";
             deletePlayerStatsStmt = conn.prepareStatement(deletePlayerStatsQuery);
             deletePlayerStatsStmt.setInt(1, matchIdInt);
             deletePlayerStatsStmt.executeUpdate();
 
-            // Delete from matches table
             String deleteMatchQuery = "DELETE FROM matches WHERE id = ?";
             deleteMatchStmt = conn.prepareStatement(deleteMatchQuery);
             deleteMatchStmt.setInt(1, matchIdInt);
@@ -254,6 +268,20 @@ public class MatchServlet extends HttpServlet {
                 response.setStatus(404);
                 response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 return;
+            }
+
+            if (highlightsPath != null) {
+                String highlightsFilePath = "F:\\Code\\JAVA\\zoho_training\\uploads\\highlights\\" + highlightsPath;
+                if (!new File(highlightsFilePath).delete()) {
+                    System.err.println("Error deleting highlights file");
+                }
+            }
+
+            if (bannerPath != null) {
+                String bannerFilePath = "F:\\Code\\JAVA\\zoho_training\\uploads\\banners\\" + bannerPath;
+                if (!new File(bannerFilePath).delete()) {
+                    System.err.println("Error deleting banner file");
+                }
             }
 
             StatsListener.fireStatsRemove(matchId);

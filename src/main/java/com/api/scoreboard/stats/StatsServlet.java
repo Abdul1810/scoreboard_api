@@ -10,14 +10,23 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.sql.*;
 import java.util.*;
+import java.util.List;
 
 @WebServlet("/update-stats")
 public class StatsServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> jsonResponse = new HashMap<>();
+
+    private final static String BANNER_PATH = "F:\\Code\\JAVA\\zoho_training\\uploads\\banners\\";
+    private final static String TEAM_LOGO_PATH = "F:\\Code\\JAVA\\zoho_training\\uploads\\teams\\";
+    private final static String PLAYER_IMAGE_PATH = "F:\\Code\\JAVA\\zoho_training\\uploads\\players\\";
 
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -51,7 +60,13 @@ public class StatsServlet extends HttpServlet {
 
         try {
             conn = Database.getConnection();
-            String query = "SELECT * FROM matches WHERE id = ?";
+            String query = "SELECT"+
+                    " t1.id AS team1_id, t2.id AS team2_id, t1.name AS team1_name, t2.name AS team2_name,"+
+                    " m.current_batting, m.is_completed, m.winner, m.active_batsman_index, m.passive_batsman_index, m.active_bowler_index, m.tournament_id, m.highlights_path"+
+                    " FROM matches m"+
+                    " JOIN teams t1 ON m.team1_id = t1.id"+
+                    " JOIN teams t2 ON m.team2_id = t2.id"+
+                    " WHERE m.id = ?";
             stmt = conn.prepareStatement(query);
             stmt.setInt(1, Integer.parseInt(matchId));
             rs = stmt.executeQuery();
@@ -82,6 +97,10 @@ public class StatsServlet extends HttpServlet {
 
             Map<String, String> matchStats = new HashMap<>();
             matchStats.put("id", matchId);
+            matchStats.put("team1_id", String.valueOf(team1Id));
+            matchStats.put("team2_id", String.valueOf(team2Id));
+            matchStats.put("team1_name", rs.getString("team1_name"));
+            matchStats.put("team2_name", rs.getString("team2_name"));
             matchStats.put("current_batting", currentBattingTeam);
             matchStats.put("active_batsman_index", String.valueOf(activeBatsmanIndex));
             matchStats.put("passive_batsman_index", String.valueOf(passiveBatsmanIndex));
@@ -194,7 +213,8 @@ public class StatsServlet extends HttpServlet {
 
             if (updateRequest.equals("wide")) {
                 if ("team1".equals(currentBattingTeam)) {
-                    int bowlerIndex = updateWicketTaker(team1_balls);
+//                    int bowlerIndex = updateWicketTaker(team1_balls, team2BowlingOrder);
+                    int bowlerIndex = activeBowlerIndex;
                     if (bowlerIndex != -1) {
                         int bowlerId = (int) team2Wickets.keySet().toArray()[bowlerIndex - 1];
                         Map<String, Object> bowlerStats = new HashMap<>(team2PlayersMap.get(bowlerId));
@@ -202,7 +222,8 @@ public class StatsServlet extends HttpServlet {
                         team2PlayersMap.put(bowlerId, bowlerStats);
                     }
                 } else {
-                    int bowlerIndex = updateWicketTaker(team2_balls);
+//                    int bowlerIndex = updateWicketTaker(team2_balls);
+                    int bowlerIndex = activeBowlerIndex;
                     if (bowlerIndex != -1) {
                         int bowlerId = (int) team1Wickets.keySet().toArray()[bowlerIndex - 1];
                         Map<String, Object> bowlerStats = new HashMap<>(team1PlayersMap.get(bowlerId));
@@ -212,7 +233,8 @@ public class StatsServlet extends HttpServlet {
                 }
             } else if (updateRequest.equals("noball")) {
                 if ("team1".equals(currentBattingTeam)) {
-                    int bowlerIndex = updateWicketTaker(team1_balls);
+//                    int bowlerIndex = updateWicketTaker(team1_balls);
+                    int bowlerIndex = activeBowlerIndex;
                     if (bowlerIndex != -1) {
                         int bowlerId = (int) team2Wickets.keySet().toArray()[bowlerIndex - 1];
                         Map<String, Object> bowlerStats = new HashMap<>(team2PlayersMap.get(bowlerId));
@@ -222,7 +244,8 @@ public class StatsServlet extends HttpServlet {
                         team1FreehitsMap.add(team1_balls + 1);
                     }
                 } else {
-                    int bowlerIndex = updateWicketTaker(team2_balls);
+//                    int bowlerIndex = updateWicketTaker(team2_balls);
+                    int bowlerIndex = activeBowlerIndex;
                     if (bowlerIndex != -1) {
                         int bowlerId = (int) team1Wickets.keySet().toArray()[bowlerIndex - 1];
                         Map<String, Object> bowlerStats = new HashMap<>(team1PlayersMap.get(bowlerId));
@@ -242,7 +265,8 @@ public class StatsServlet extends HttpServlet {
                 }
                 if ("team1".equals(currentBattingTeam)) {
                     if (!team1FreehitsMap.contains(team1_balls)) {
-                        int bowlerIndex = updateWicketTaker(team1_balls);
+//                        int bowlerIndex = updateWicketTaker(team1_balls);
+                        int bowlerIndex = activeBowlerIndex;
                         if (bowlerIndex != -1) {
                             int bowlerId = (int) team2Wickets.keySet().toArray()[bowlerIndex - 1];
                             wicketer_id = bowlerId;
@@ -261,7 +285,8 @@ public class StatsServlet extends HttpServlet {
                     }
                 } else {
                     if (!team2FreehitsMap.contains(team2_balls)) {
-                        int bowlerIndex = updateWicketTaker(team2_balls);
+//                        int bowlerIndex = updateWicketTaker(team2_balls);
+                        int bowlerIndex = activeBowlerIndex;
                         if (bowlerIndex != -1) {
                             int bowlerId = (int) team1Wickets.keySet().toArray()[bowlerIndex - 1];
                             wicketer_id = bowlerId;
@@ -495,6 +520,12 @@ public class StatsServlet extends HttpServlet {
                 stmt.executeUpdate();
             }
 
+            if (matchStats.get("is_completed").equals("true") && matchStats.get("winner").equals("team1")) {
+                createBanner(Integer.parseInt(matchStats.get("team1_id")), Integer.parseInt(matchStats.get("id")));
+            } else if (matchStats.get("is_completed").equals("true") && matchStats.get("winner").equals("team2")) {
+                createBanner(Integer.parseInt(matchStats.get("team2_id")), Integer.parseInt(matchStats.get("id")));
+            }
+
         } catch (SQLException e) {
             System.out.println("Error updating match stats: " + e.getMessage());
         } finally {
@@ -533,30 +564,31 @@ public class StatsServlet extends HttpServlet {
         }
     }
 
-    private int updateWicketTaker(int ballCount) {
-        int bowlerIndex;
-
-        if (ballCount <= 66) {
-            int over = ballCount / 6;
-            int ball = ballCount % 6;
-            bowlerIndex = over + (ball > 0 ? 1 : 0);
-        } else {
-            ballCount -= 66;
-            int over = ballCount / 6;
-            int ball = ballCount % 6;
-            bowlerIndex = over + (ball > 0 ? 1 : 0);
-        }
-
-        if (bowlerIndex < 0 || bowlerIndex > 11) {
-            return -1;
-        }
-
-        if (bowlerIndex == 0) {
-            bowlerIndex = 1;
-        }
-
-        return bowlerIndex;
-    }
+//    private int updateWicketTaker(int ballCount, List<Integer> activeBowlerIndex) {
+//
+//        int bowlerIndex;
+//
+//        if (ballCount <= 66) {
+//            int over = ballCount / 6;
+//            int ball = ballCount % 6;
+//            bowlerIndex = over + (ball > 0 ? 1 : 0);
+//        } else {
+//            ballCount -= 66;
+//            int over = ballCount / 6;
+//            int ball = ballCount % 6;
+//            bowlerIndex = over + (ball > 0 ? 1 : 0);
+//        }
+//
+//        if (bowlerIndex < 0 || bowlerIndex > 11) {
+//            return -1;
+//        }
+//
+//        if (bowlerIndex == 0) {
+//            bowlerIndex = 1;
+//        }
+//
+//        return bowlerIndex;
+//    }
 
     private Map<Integer, Integer> sortHashMapWithVals(Map<Integer, Integer> map) {
         List<Map.Entry<Integer, Integer>> list = new ArrayList<>(map.entrySet());
@@ -621,6 +653,155 @@ public class StatsServlet extends HttpServlet {
                 if (stmt != null) stmt.close();
             } catch (SQLException e) {
                 System.err.println("Error closing resources: " + e.getMessage());
+            }
+        }
+    }
+
+    public void createBanner(int teamId, int matchId) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            conn = Database.getConnection();
+            /*
+             */
+            String query = "SELECT t.name AS team_name, t.logo AS team_logo, " +
+                    "MAX(CASE WHEN ps.runs = (SELECT MAX(ps2.runs) FROM player_stats ps2 " +
+                    "JOIN team_players tp2 ON ps2.player_id = tp2.player_id WHERE ps2.match_id = ? AND tp2.team_id = t.id) THEN p.name END) AS highest_runs_player, " +
+                    "MAX(CASE WHEN ps.runs = (SELECT MAX(ps2.runs) FROM player_stats ps2 " +
+                    "JOIN team_players tp2 ON ps2.player_id = tp2.player_id WHERE ps2.match_id = ? AND tp2.team_id = t.id) THEN p.avatar END) AS highest_runs_player_avatar, " +
+                    "MAX(ps.runs) AS highest_runs, " +
+                    "MAX(CASE WHEN ps.wickets = (SELECT MAX(ps2.wickets) FROM player_stats ps2 " +
+                    "JOIN team_players tp2 ON ps2.player_id = tp2.player_id WHERE ps2.match_id = ? AND tp2.team_id = t.id) THEN p.name END) AS highest_wickets_player, " +
+                    "MAX(CASE WHEN ps.wickets = (SELECT MAX(ps2.wickets) FROM player_stats ps2 " +
+                    "JOIN team_players tp2 ON ps2.player_id = tp2.player_id WHERE ps2.match_id = ? AND tp2.team_id = t.id) THEN p.avatar END) AS highest_wickets_player_avatar, " +
+                    "MAX(ps.wickets) AS highest_wickets, " +
+                    "MAX(CASE WHEN ps.sixes = (SELECT MAX(ps2.sixes) FROM player_stats ps2 " +
+                    "JOIN team_players tp2 ON ps2.player_id = tp2.player_id WHERE ps2.match_id = ? AND tp2.team_id = t.id) THEN p.name END) AS highest_sixes_player, " +
+                    "MAX(CASE WHEN ps.sixes = (SELECT MAX(ps2.sixes) FROM player_stats ps2 " +
+                    "JOIN team_players tp2 ON ps2.player_id = tp2.player_id WHERE ps2.match_id = ? AND tp2.team_id = t.id) THEN p.avatar END) AS highest_sixes_player_avatar, " +
+                    "MAX(ps.sixes) AS highest_sixes " +
+                    "FROM teams t " +
+                    "JOIN team_players tp ON t.id = tp.team_id " +
+                    "JOIN player_stats ps ON tp.player_id = ps.player_id " +
+                    "JOIN players p ON ps.player_id = p.id " +
+                    "WHERE ps.match_id = ? AND t.id = ? " +
+                    "GROUP BY t.id, t.name, t.logo";
+
+            stmt = conn.prepareStatement(query);
+            stmt.setInt(1, matchId);
+            stmt.setInt(2, matchId);
+            stmt.setInt(3, matchId);
+            stmt.setInt(4, matchId);
+            stmt.setInt(5, matchId);
+            stmt.setInt(6, matchId);
+            stmt.setInt(7, matchId);
+            stmt.setInt(8, teamId);
+
+            rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                String teamName = rs.getString("team_name");
+                String teamLogo = rs.getString("team_logo");
+                int highestRuns = rs.getInt("highest_runs");
+                String highestRunsPlayer = rs.getString("highest_runs_player");
+                String highestRunsPlayerAvatar = rs.getString("highest_runs_player_avatar");
+                int highestWickets = rs.getInt("highest_wickets");
+                String highestWicketsPlayer = rs.getString("highest_wickets_player");
+                String highestWicketsPlayerAvatar = rs.getString("highest_wickets_player_avatar");
+                int highestSixes = rs.getInt("highest_sixes");
+                String highestSixesPlayer = rs.getString("highest_sixes_player");
+                String highestSixesPlayerAvatar = rs.getString("highest_sixes_player_avatar");
+                String bgImage = "bg.jpg";
+
+                BufferedImage image = ImageIO.read(new File(BANNER_PATH + bgImage));
+                Graphics2D g2d = image.createGraphics();
+
+                int desiredLogoWidth = 300;
+                int desiredLogoHeight = 300;
+
+                BufferedImage teamLogoImage = ImageIO.read(new File(TEAM_LOGO_PATH + teamLogo));
+                BufferedImage resizedTeamLogo = new BufferedImage(desiredLogoWidth, desiredLogoHeight, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D gLogo = resizedTeamLogo.createGraphics();
+                gLogo.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                gLogo.drawImage(teamLogoImage, 0, 0, desiredLogoWidth, desiredLogoHeight, null);
+                gLogo.dispose();
+
+                int logoX = (image.getWidth() - desiredLogoWidth) / 2;
+                int logoY = 40;
+
+                g2d.setFont(new Font("Arial", Font.BOLD, 32));
+                g2d.setColor(Color.WHITE);
+                String winnerText = "Winner: " + teamName;
+                int winnerX = (image.getWidth() - g2d.getFontMetrics().stringWidth(winnerText)) / 2;
+                g2d.drawString(winnerText, winnerX, logoY);
+                logoY += 30;
+
+                g2d.drawImage(resizedTeamLogo, logoX, logoY, null);
+                int textY = logoY + desiredLogoHeight + 30;
+                g2d.setFont(new Font("Arial", Font.BOLD, 26));
+
+                if (highestRunsPlayerAvatar != null && !highestRunsPlayerAvatar.isEmpty()) {
+                    BufferedImage highestRunsPlayerImage = ImageIO.read(new File(PLAYER_IMAGE_PATH + highestRunsPlayerAvatar));
+                    int avatarSize = 40;
+                    int avatarX = (image.getWidth() - (avatarSize + g2d.getFontMetrics().stringWidth("Man of the Match: " + highestRunsPlayer + " (" + highestRuns + ")"))) / 2;
+
+                    g2d.drawImage(highestRunsPlayerImage, avatarX, textY - avatarSize + 10, avatarSize, avatarSize, null);
+
+                    int textX = avatarX + avatarSize + 10;
+                    String text = "Man of the Match: " + highestRunsPlayer + " (" + highestRuns + ")";
+                    g2d.drawString(text, textX, textY);
+                }
+                textY += 50;
+
+                if (highestSixesPlayerAvatar != null && !highestSixesPlayerAvatar.isEmpty() && highestSixes > 0) {
+                    BufferedImage highestSixesPlayerImage = ImageIO.read(new File(PLAYER_IMAGE_PATH + highestSixesPlayerAvatar));
+                    int avatarSize = 40;
+                    int avatarX = (image.getWidth() - (avatarSize + g2d.getFontMetrics().stringWidth("Highest Sixes: " + highestSixesPlayer + " (" + highestSixes + ")"))) / 2;
+
+                    g2d.drawImage(highestSixesPlayerImage, avatarX, textY - avatarSize + 10, avatarSize, avatarSize, null);
+
+                    int textX = avatarX + avatarSize + 10;
+                    String text = "Highest Sixes: " + highestSixesPlayer + " (" + highestSixes + ")";
+                    g2d.drawString(text, textX, textY);
+                }
+                textY += 50;
+
+                if (highestWicketsPlayerAvatar != null && !highestWicketsPlayerAvatar.isEmpty()) {
+                    BufferedImage highestWicketsPlayerImage = ImageIO.read(new File(PLAYER_IMAGE_PATH + highestWicketsPlayerAvatar));
+                    int avatarSize = 40;
+                    int avatarX = (image.getWidth() - (avatarSize + g2d.getFontMetrics().stringWidth("Highest Wickets: " + highestWicketsPlayer + " (" + highestWickets + ")"))) / 2;
+
+                    g2d.drawImage(highestWicketsPlayerImage, avatarX, textY - avatarSize + 10, avatarSize, avatarSize, null);
+                    int textX = avatarX + avatarSize + 10;
+                    String text = "Highest Wickets: " + highestWicketsPlayer + " (" + highestWickets + ")";
+                    g2d.drawString(text, textX, textY);
+                }
+
+                g2d.dispose();
+                String outputFilePath = BANNER_PATH + "banner_" + teamId + "_" + matchId + ".jpg";
+                ImageIO.write(image, "png", new File(outputFilePath));
+
+                query = "UPDATE matches SET banner_path = ? WHERE id = ?";
+                stmt = conn.prepareStatement(query);
+                stmt.setString(1, "banner_" + teamId + "_" + matchId + ".jpg");
+                stmt.setInt(2, matchId);
+                stmt.executeUpdate();
+
+                System.out.println("Banner created successfully: " + outputFilePath);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error creating banner: " + e.getMessage());
+        } catch (IOException e) {
+            System.out.println("Error reading image: " + e.getMessage());
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (stmt != null) stmt.close();
+                if (conn != null) conn.close();
+            } catch (SQLException e) {
+                System.out.println("Error Closing Resource: " + e.getMessage());
             }
         }
     }

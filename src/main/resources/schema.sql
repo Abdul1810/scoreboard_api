@@ -2,6 +2,7 @@ CREATE TABLE players
 (
     id         INT(11)      NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name       VARCHAR(255) NOT NULL,
+    avatar     VARCHAR(255) NOT NULL DEFAULT 'placeholder.png',
     created_at DATETIME     NOT NULL DEFAULT current_timestamp()
 );
 
@@ -9,6 +10,7 @@ CREATE TABLE teams
 (
     id         INT(11)      NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name       VARCHAR(255) NOT NULL UNIQUE,
+    logo       VARCHAR(255) NOT NULL DEFAULT 'placeholder.png',
     created_at DATETIME     NOT NULL DEFAULT current_timestamp()
 );
 
@@ -41,6 +43,7 @@ CREATE TABLE matches
     team2_id              INT(11)                                NOT NULL,
     is_completed          ENUM ('true', 'false')                 NOT NULL DEFAULT 'false',
     highlights_path       VARCHAR(255)                           NULL,
+    banner_path           VARCHAR(255)                           NULL,
     winner                ENUM ('team1', 'team2', 'none', 'tie') NOT NULL DEFAULT 'none',
     current_batting       ENUM ('team1', 'team2')                NOT NULL DEFAULT 'team1',
     active_batsman_index  INT(11)                                NOT NULL DEFAULT 1,
@@ -52,6 +55,9 @@ CREATE TABLE matches
     FOREIGN KEY (team2_id) REFERENCES teams (id) ON DELETE CASCADE,
     FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE SET NULL
 );
+
+ALTER TABLE matches
+    ADD COLUMN banner_path VARCHAR(255) NULL;
 
 CREATE TABLE team_order
 (
