@@ -11,7 +11,9 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @WebServlet("/api/total-wickets")
@@ -65,7 +67,7 @@ public class PlayerWicketsServlet extends HttpServlet {
                 return;
             }
 
-            fetchPlayerWicketsData(conn, jsonResponse, teamId, playerId, player, playerIndex);
+            fetchPlayerWicketsData(conn, jsonResponse, Integer.parseInt(teamId), playerId, player, playerIndex);
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } catch (Exception e) {
             jsonResponse.put("message", "Database error: " + e.getMessage());
@@ -109,25 +111,39 @@ public class PlayerWicketsServlet extends HttpServlet {
         return -1;
     }
 
-    private void fetchPlayerWicketsData(Connection conn, Map<String, Object> jsonResponse, String teamId, int playerId, String player, int playerIndex) throws Exception {
+    private void fetchPlayerWicketsData(Connection conn, Map<String, Object> jsonResponse, int teamId, int playerId, String player, int playerIndex) throws Exception {
         PreparedStatement stmt = null;
         ResultSet rs = null;
-
-        // Query to get the player's wickets and the total balls faced by the opposing team
+        /*
+        SELECT ps.wickets,
+        SUM(CASE WHEN ps_opp.team_id != 12 THEN ps_opp.balls ELSE 0 END) AS opponent_balls,
+        to1.bowling_order
+        FROM player_stats ps
+        JOIN matches m ON ps.match_id = m.id
+        JOIN player_stats ps_opp ON ps.match_id = ps_opp.match_id
+        JOIN team_order to1 ON to1.team_id = 12
+        WHERE ps.player_id = 122 AND (m.team1_id = 12 OR m.team2_id = 12)
+        GROUP BY ps.match_id, ps.wickets;
+         */
         String query = "SELECT ps.wickets, " +
-                "SUM(CASE WHEN ps_opp.team_id != ? THEN ps_opp.balls ELSE 0 END) AS opponent_balls " +
+                "SUM(CASE WHEN ps_opp.team_id != ? THEN ps_opp.balls ELSE 0 END) AS opponent_balls, " +
+                "to1.bowling_order " +
                 "FROM player_stats ps " +
                 "JOIN matches m ON ps.match_id = m.id " +
                 "JOIN player_stats ps_opp ON ps.match_id = ps_opp.match_id " +
+                "JOIN team_order to1 ON to1.team_id = ? " +
                 "WHERE ps.player_id = ? AND (m.team1_id = ? OR m.team2_id = ?) " +
                 "GROUP BY ps.match_id, ps.wickets";
 
         try {
             stmt = conn.prepareStatement(query);
-            stmt.setString(1, teamId);
-            stmt.setInt(2, playerId);
-            stmt.setString(3, teamId);
-            stmt.setString(4, teamId);
+            System.out.println("teamId: " + teamId);
+            System.out.println("playerId: " + playerId);
+            stmt.setInt(1, teamId);
+            stmt.setInt(2, teamId);
+            stmt.setInt(3, playerId);
+            stmt.setInt(4, teamId);
+            stmt.setInt(5, teamId);
             rs = stmt.executeQuery();
 
             int totalWickets = 0;
@@ -137,23 +153,40 @@ public class PlayerWicketsServlet extends HttpServlet {
             while (rs.next()) {
                 int matchWickets = rs.getInt("wickets");
                 int matchBalls = rs.getInt("opponent_balls");
+//                [1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+                List<Integer> bowlingOrder = objectMapper.readValue(rs.getString("bowling_order"), List.class);
+                System.out.println(bowlingOrder);
+                System.out.println(playerIndex);
+                System.out.println(matchWickets);
+                System.out.println(matchBalls);
                 int thisMatchBalls = 0;
 
                 totalWickets += matchWickets;
-                if (matchBalls <= 66) {
-                    if (playerIndex * 6 <= matchBalls) {
-                        thisMatchBalls += 6;
-                    } else if ((playerIndex - 1) * 6 < matchBalls) {
-                        thisMatchBalls += matchBalls - (playerIndex - 1) * 6;
+
+                if (matchBalls > 0) {
+                    List<Integer> ballsArray = new ArrayList<>();
+                    int balls = matchBalls;
+                    int i = 0;
+
+                    while (balls > 0) {
+                        if (balls >= 6) {
+                            ballsArray.add(6);
+                            balls -= 6;
+                        } else {
+                            ballsArray.add(balls);
+                            balls = 0;
+                        }
+                        i++;
                     }
-                } else {
-                    thisMatchBalls += 6;
-                    int remainingBalls = matchBalls - 66;
-                    if (playerIndex <= 9) {
-                        if (playerIndex * 6 <= remainingBalls) {
-                            thisMatchBalls += 6;
-                        } else if ((playerIndex - 1) * 6 < remainingBalls) {
-                            thisMatchBalls += remainingBalls - (playerIndex - 1) * 6;
+
+                    while (i < 11) {
+                        ballsArray.add(0);
+                        i++;
+                    }
+
+                    for (int j = 0; j < bowlingOrder.size(); j++) {
+                        if (bowlingOrder.get(j) == playerIndex) {
+                            thisMatchBalls += ballsArray.get(j);
                         }
                     }
                 }
