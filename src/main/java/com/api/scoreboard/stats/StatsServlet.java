@@ -373,8 +373,9 @@ public class StatsServlet extends HttpServlet {
             if ("team1".equals(currentBattingTeam)) {
                 if (team2Wickets.values().stream().mapToInt(Integer::intValue).sum() == 10 || team1_balls == 120) {
                     matchStats.put("current_batting", "team2");
-                    activeBatsmanIndex = 1;
-                    passiveBatsmanIndex = 2;
+                    activeBatsmanIndex = -1;
+                    passiveBatsmanIndex = -1;
+                    activeBowlerIndex = -1;
                 }
             } else if ("team2".equals(currentBattingTeam)) {
                 int team1Score = team1Scores.values().stream().mapToInt(Integer::intValue).sum();
@@ -664,8 +665,6 @@ public class StatsServlet extends HttpServlet {
 
         try {
             conn = Database.getConnection();
-            /*
-             */
             String query = "SELECT t.name AS team_name, t.logo AS team_logo, " +
                     "MAX(CASE WHEN ps.runs = (SELECT MAX(ps2.runs) FROM player_stats ps2 " +
                     "JOIN team_players tp2 ON ps2.player_id = tp2.player_id WHERE ps2.match_id = ? AND tp2.team_id = t.id) THEN p.name END) AS highest_runs_player, " +
@@ -746,12 +745,16 @@ public class StatsServlet extends HttpServlet {
                 int totalAvatarWidth = 3 * avatarSize + 2 * avatarSpacing;
                 int startX = (image.getWidth() - totalAvatarWidth) / 2;
                 textY = logoY + desiredLogoHeight + 30;
-
                 g2d.setFont(new Font("Arial", Font.BOLD, 26));
                 String[] titles = {"Highest Sixes", "Man of the Match", "Highest Wickets"};
                 int titleY = textY;
                 for (int i = 0; i < titles.length; i++) {
                     int titleX = startX + i * (avatarSize + avatarSpacing) + (avatarSize - g2d.getFontMetrics().stringWidth(titles[i])) / 2;
+
+                    g2d.setColor(Color.GRAY);
+                    g2d.drawString(titles[i], titleX + 2, titleY + 2);
+
+                    g2d.setColor(Color.WHITE);
                     g2d.drawString(titles[i], titleX, titleY);
                 }
 
@@ -762,7 +765,12 @@ public class StatsServlet extends HttpServlet {
                     g2d.drawImage(highestSixesPlayerImage, avatarX, textY, avatarSize, avatarSize, null);
                     String text = highestSixesPlayer + " (" + highestSixes + ")";
                     int textX = avatarX + (avatarSize - g2d.getFontMetrics().stringWidth(text)) / 2;
-                    g2d.drawString(text, textX, textY + avatarSize + 20);
+
+                    g2d.setColor(Color.GRAY);
+                    g2d.drawString(text, textX + 2, textY + avatarSize + 22);
+
+                    g2d.setColor(Color.WHITE);
+                    g2d.drawString(text, textX, textY + avatarSize + 30);
                 }
 
                 if (highestRunsPlayerAvatar != null && !highestRunsPlayerAvatar.isEmpty()) {
@@ -771,6 +779,11 @@ public class StatsServlet extends HttpServlet {
                     g2d.drawImage(highestRunsPlayerImage, avatarX, textY, avatarSize, avatarSize, null);
                     String text = highestRunsPlayer + " (" + highestRuns + ")";
                     int textX = avatarX + (avatarSize - g2d.getFontMetrics().stringWidth(text)) / 2;
+
+                    g2d.setColor(Color.GRAY);
+                    g2d.drawString(text, textX + 2, textY + avatarSize + 32);
+
+                    g2d.setColor(Color.WHITE);
                     g2d.drawString(text, textX, textY + avatarSize + 30);
                 }
 
@@ -780,7 +793,12 @@ public class StatsServlet extends HttpServlet {
                     g2d.drawImage(highestWicketsPlayerImage, avatarX, textY, avatarSize, avatarSize, null);
                     String text = highestWicketsPlayer + " (" + highestWickets + ")";
                     int textX = avatarX + (avatarSize - g2d.getFontMetrics().stringWidth(text)) / 2;
-                    g2d.drawString(text, textX, textY + avatarSize + 20);
+
+                    g2d.setColor(Color.GRAY);
+                    g2d.drawString(text, textX + 2, textY + avatarSize + 22);
+
+                    g2d.setColor(Color.WHITE);
+                    g2d.drawString(text, textX, textY + avatarSize + 30);
                 }
 
                 g2d.dispose();

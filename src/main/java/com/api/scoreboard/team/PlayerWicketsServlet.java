@@ -131,7 +131,7 @@ public class PlayerWicketsServlet extends HttpServlet {
                 "FROM player_stats ps " +
                 "JOIN matches m ON ps.match_id = m.id " +
                 "JOIN player_stats ps_opp ON ps.match_id = ps_opp.match_id " +
-                "JOIN team_order to1 ON to1.team_id = ? " +
+                "JOIN team_order to1 ON to1.team_id = ? AND to1.match_id = m.id " +
                 "WHERE ps.player_id = ? AND (m.team1_id = ? OR m.team2_id = ?) " +
                 "GROUP BY ps.match_id, ps.wickets";
 
