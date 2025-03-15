@@ -741,42 +741,46 @@ public class StatsServlet extends HttpServlet {
                 g2d.drawImage(resizedTeamLogo, logoX, logoY, null);
                 int textY = logoY + desiredLogoHeight + 30;
                 g2d.setFont(new Font("Arial", Font.BOLD, 26));
+                int avatarSize = 200;
+                int avatarSpacing = 50;
+                int totalAvatarWidth = 3 * avatarSize + 2 * avatarSpacing;
+                int startX = (image.getWidth() - totalAvatarWidth) / 2;
+                textY = logoY + desiredLogoHeight + 30;
+
+                g2d.setFont(new Font("Arial", Font.BOLD, 26));
+                String[] titles = {"Highest Sixes", "Man of the Match", "Highest Wickets"};
+                int titleY = textY;
+                for (int i = 0; i < titles.length; i++) {
+                    int titleX = startX + i * (avatarSize + avatarSpacing) + (avatarSize - g2d.getFontMetrics().stringWidth(titles[i])) / 2;
+                    g2d.drawString(titles[i], titleX, titleY);
+                }
+
+                textY += 20;
+                if (highestSixesPlayerAvatar != null && !highestSixesPlayerAvatar.isEmpty() && highestSixes > 0) {
+                    BufferedImage highestSixesPlayerImage = ImageIO.read(new File(PLAYER_IMAGE_PATH + highestSixesPlayerAvatar));
+                    int avatarX = startX;
+                    g2d.drawImage(highestSixesPlayerImage, avatarX, textY, avatarSize, avatarSize, null);
+                    String text = highestSixesPlayer + " (" + highestSixes + ")";
+                    int textX = avatarX + (avatarSize - g2d.getFontMetrics().stringWidth(text)) / 2;
+                    g2d.drawString(text, textX, textY + avatarSize + 20);
+                }
 
                 if (highestRunsPlayerAvatar != null && !highestRunsPlayerAvatar.isEmpty()) {
                     BufferedImage highestRunsPlayerImage = ImageIO.read(new File(PLAYER_IMAGE_PATH + highestRunsPlayerAvatar));
-                    int avatarSize = 40;
-                    int avatarX = (image.getWidth() - (avatarSize + g2d.getFontMetrics().stringWidth("Man of the Match: " + highestRunsPlayer + " (" + highestRuns + ")"))) / 2;
-
-                    g2d.drawImage(highestRunsPlayerImage, avatarX, textY - avatarSize + 10, avatarSize, avatarSize, null);
-
-                    int textX = avatarX + avatarSize + 10;
-                    String text = "Man of the Match: " + highestRunsPlayer + " (" + highestRuns + ")";
-                    g2d.drawString(text, textX, textY);
+                    int avatarX = startX + avatarSize + avatarSpacing;
+                    g2d.drawImage(highestRunsPlayerImage, avatarX, textY, avatarSize, avatarSize, null);
+                    String text = highestRunsPlayer + " (" + highestRuns + ")";
+                    int textX = avatarX + (avatarSize - g2d.getFontMetrics().stringWidth(text)) / 2;
+                    g2d.drawString(text, textX, textY + avatarSize + 30);
                 }
-                textY += 50;
-
-                if (highestSixesPlayerAvatar != null && !highestSixesPlayerAvatar.isEmpty() && highestSixes > 0) {
-                    BufferedImage highestSixesPlayerImage = ImageIO.read(new File(PLAYER_IMAGE_PATH + highestSixesPlayerAvatar));
-                    int avatarSize = 40;
-                    int avatarX = (image.getWidth() - (avatarSize + g2d.getFontMetrics().stringWidth("Highest Sixes: " + highestSixesPlayer + " (" + highestSixes + ")"))) / 2;
-
-                    g2d.drawImage(highestSixesPlayerImage, avatarX, textY - avatarSize + 10, avatarSize, avatarSize, null);
-
-                    int textX = avatarX + avatarSize + 10;
-                    String text = "Highest Sixes: " + highestSixesPlayer + " (" + highestSixes + ")";
-                    g2d.drawString(text, textX, textY);
-                }
-                textY += 50;
 
                 if (highestWicketsPlayerAvatar != null && !highestWicketsPlayerAvatar.isEmpty()) {
                     BufferedImage highestWicketsPlayerImage = ImageIO.read(new File(PLAYER_IMAGE_PATH + highestWicketsPlayerAvatar));
-                    int avatarSize = 40;
-                    int avatarX = (image.getWidth() - (avatarSize + g2d.getFontMetrics().stringWidth("Highest Wickets: " + highestWicketsPlayer + " (" + highestWickets + ")"))) / 2;
-
-                    g2d.drawImage(highestWicketsPlayerImage, avatarX, textY - avatarSize + 10, avatarSize, avatarSize, null);
-                    int textX = avatarX + avatarSize + 10;
-                    String text = "Highest Wickets: " + highestWicketsPlayer + " (" + highestWickets + ")";
-                    g2d.drawString(text, textX, textY);
+                    int avatarX = startX + 2 * (avatarSize + avatarSpacing);
+                    g2d.drawImage(highestWicketsPlayerImage, avatarX, textY, avatarSize, avatarSize, null);
+                    String text = highestWicketsPlayer + " (" + highestWickets + ")";
+                    int textX = avatarX + (avatarSize - g2d.getFontMetrics().stringWidth(text)) / 2;
+                    g2d.drawString(text, textX, textY + avatarSize + 20);
                 }
 
                 g2d.dispose();

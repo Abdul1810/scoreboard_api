@@ -78,7 +78,7 @@ public class MatchServlet extends HttpServlet {
                     match.put("active_batsman_index", rs.getInt("active_batsman_index"));
                     match.put("passive_batsman_index", rs.getInt("passive_batsman_index"));
 
-                    query = "SELECT t.name, p.name as player_name FROM teams t JOIN team_players tp ON t.id = tp.team_id JOIN players p ON tp.player_id = p.id WHERE t.id = ?";
+                    query = "SELECT t.name, t.logo, p.name as player_name FROM teams t JOIN team_players tp ON t.id = tp.team_id JOIN players p ON tp.player_id = p.id WHERE t.id = ?";
                     stmt = conn.prepareStatement(query);
 
                     stmt.setInt(1, matchIds.get("team1_id"));
@@ -86,6 +86,7 @@ public class MatchServlet extends HttpServlet {
 
                     if (rs.next()) {
                         match.put("team1", rs.getString("name"));
+                        match.put("team1_logo", "http://localhost:8080/image/teams?name=" + rs.getString("logo") + "&q=low");
                         List<String> team1Players = new ArrayList<>();
                         do {
                             team1Players.add(rs.getString("player_name"));
@@ -98,6 +99,7 @@ public class MatchServlet extends HttpServlet {
 
                     if (rs.next()) {
                         match.put("team2", rs.getString("name"));
+                        match.put("team2_logo", "http://localhost:8080/image/teams?name=" + rs.getString("logo") + "&q=low");
                         List<String> team2Players = new ArrayList<>();
                         do {
                             team2Players.add(rs.getString("player_name"));

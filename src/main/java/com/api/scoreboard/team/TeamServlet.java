@@ -234,7 +234,7 @@ public class TeamServlet extends HttpServlet {
                     int teamId = rs.getInt("id");
                     team.put("id", teamId);
                     team.put("name", rs.getString("name"));
-                    team.put("logo", "http://localhost:8080/image?type=team&name=" + rs.getString("logo"));
+                    team.put("logo", "http://localhost:8080/image/teams?name=" + rs.getString("logo") + "&q=low");
 
                     String playerQuery = "SELECT p.name FROM team_players tp JOIN players p ON tp.player_id = p.id WHERE tp.team_id = ?";
                     try (PreparedStatement playerStmt = conn.prepareStatement(playerQuery)) {
@@ -260,7 +260,7 @@ public class TeamServlet extends HttpServlet {
                     int teamId = rs.getInt("id");
                     team.put("id", teamId);
                     team.put("name", rs.getString("name"));
-                    team.put("logo", "http://localhost:8080/image?type=team&name=" + rs.getString("logo"));
+                    team.put("logo", "http://localhost:8080/image/teams?name=" + rs.getString("logo") + "&q=medium");
 
                     String playerQuery = "SELECT p.name, p.avatar FROM team_players tp JOIN players p ON tp.player_id = p.id WHERE tp.team_id = ?";
                     try (PreparedStatement playerStmt = conn.prepareStatement(playerQuery)) {
@@ -270,7 +270,7 @@ public class TeamServlet extends HttpServlet {
                         while (playerRs.next()) {
                             Map<String, String> player = new HashMap<>();
                             player.put("name", playerRs.getString("name"));
-                            player.put("avatar", "http://localhost:8080/image?type=player&name=" + playerRs.getString("avatar"));
+                            player.put("avatar", "http://localhost:8080/image/players?name=" + playerRs.getString("avatar") + "&q=low");
                             players.add(player);
                         }
                         team.put("players", players);

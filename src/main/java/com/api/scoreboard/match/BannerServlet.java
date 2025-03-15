@@ -17,8 +17,6 @@ import java.sql.SQLException;
 
 @WebServlet("/image/banner")
 public class BannerServlet extends HttpServlet {
-
-
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) {
         // get match id from request parameter
