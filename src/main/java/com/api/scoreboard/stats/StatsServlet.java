@@ -392,8 +392,8 @@ public class StatsServlet extends HttpServlet {
                     activeBowlerIndex = -1;
                 }
             } else if ("team2".equals(currentBattingTeam)) {
-                int team1Score = team1Scores.values().stream().mapToInt(Integer::intValue).sum();
-                int team2Score = team2Scores.values().stream().mapToInt(Integer::intValue).sum();
+                int team1Score = team1Scores.values().stream().mapToInt(Integer::intValue).sum() + team2PlayersMap.values().stream().mapToInt(player -> (int) player.get("wide_balls")).sum() + team2PlayersMap.values().stream().mapToInt(player -> (int) player.get("no_balls")).sum();
+                int team2Score = team2Scores.values().stream().mapToInt(Integer::intValue).sum() + team1PlayersMap.values().stream().mapToInt(player -> (int) player.get("wide_balls")).sum() + team1PlayersMap.values().stream().mapToInt(player -> (int) player.get("no_balls")).sum();
                 if (team2Score > team1Score) {
                     if (tournamentId != 0) {
                         updateTournament(team1Id, team2Id, Integer.parseInt(matchId), tournamentId);

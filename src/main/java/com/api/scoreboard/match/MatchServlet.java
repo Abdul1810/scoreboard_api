@@ -183,9 +183,10 @@ public class MatchServlet extends HttpServlet {
                 return;
             }
 
-            Match.create(conn, Integer.parseInt(team1Id), Integer.parseInt(team2Id));
+            int matchId = Match.create(conn, Integer.parseInt(team1Id), Integer.parseInt(team2Id));
             MatchListener.fireMatchesUpdate();
             jsonResponse.put("message", "success");
+            jsonResponse.put("id", String.valueOf(matchId));
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } catch (SQLException e) {
             jsonResponse.put("message", "Database error: " + e.getMessage());

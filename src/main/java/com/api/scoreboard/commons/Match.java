@@ -35,8 +35,8 @@ public class Match {
         if (rs.next()) {
             matchId = rs.getInt(1);
             System.out.println("Going to insert player stats for match ID: " + matchId);
-            String insertPlayerStatsQuery = "INSERT INTO player_stats (player_id, match_id, team_id, runs, wickets) " +
-                    "SELECT tp.player_id, ?, ?, 0, 0 FROM team_players tp WHERE tp.team_id = ?";
+            String insertPlayerStatsQuery = "INSERT INTO player_stats (player_id, match_id, team_id) " +
+                    "SELECT tp.player_id, ?, ? FROM team_players tp WHERE tp.team_id = ?";
 
             PreparedStatement insertPlayerStatsStmt = conn.prepareStatement(insertPlayerStatsQuery);
             insertPlayerStatsStmt.setInt(1, matchId);
