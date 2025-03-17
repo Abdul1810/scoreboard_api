@@ -8,10 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.List;
 
 @WebServlet("/image/*")
@@ -44,12 +41,16 @@ public class ImageStreamer extends HttpServlet {
         }
 
         try {
+            String extType = imageName.substring(imageName.lastIndexOf(".") + 1);
             BufferedImage originalImage = ImageIO.read(imageFile);
             if (originalImage == null) {
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 return;
             }
 
+            if (qualityParam == null) {
+                qualityParam = "high";
+            }
             BufferedImage resizedImage;
             switch (qualityParam.toLowerCase()) {
                 case "low":
@@ -59,28 +60,41 @@ public class ImageStreamer extends HttpServlet {
                     resizedImage = resizeImage(originalImage, 128, 128);
                     break;
                 case "high":
+                    qualityParam = "high";
                     resizedImage = originalImage;
                     break;
                 default:
+                    qualityParam = "high";
                     response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                     return;
             }
 
-            response.setContentType("image/jpeg");
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(resizedImage, "jpg", baos);
-            byte[] imageBytes = baos.toByteArray();
+            response.setContentType("image/" + extType);
 
-            try (OutputStream os = response.getOutputStream()) {
-                int offset = 0;
-                while (offset < imageBytes.length) {
-                    int chunkSize = Math.min(8192, imageBytes.length - offset);
-                    os.write(imageBytes, offset, chunkSize);
+            if (qualityParam.equals("high")) {
+                FileInputStream fis = new FileInputStream(imageFile);
+                OutputStream os = response.getOutputStream();
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    os.write(buffer, 0, bytesRead);
                     os.flush();
-                    offset += chunkSize;
+                }
+            } else {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(resizedImage, "jpg", baos);
+                byte[] imageBytes = baos.toByteArray();
+
+                try (OutputStream os = response.getOutputStream()) {
+                    int offset = 0;
+                    while (offset < imageBytes.length) {
+                        int chunkSize = Math.min(8192, imageBytes.length - offset);
+                        os.write(imageBytes, offset, chunkSize);
+                        os.flush();
+                        offset += chunkSize;
+                    }
                 }
             }
-
         } catch (IOException e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             System.out.println("Error fetching image: " + e.getMessage());

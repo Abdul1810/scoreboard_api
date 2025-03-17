@@ -33,7 +33,6 @@ public class HighlightsServlet extends HttpServlet {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> jsonResponse = new HashMap<>();
 
-
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) {
         String matchId = request.getParameter("id");

@@ -125,7 +125,7 @@ public class PlayerWicketsServlet extends HttpServlet {
         WHERE ps.player_id = 122 AND (m.team1_id = 12 OR m.team2_id = 12)
         GROUP BY ps.match_id, ps.wickets;
          */
-        String query = "SELECT ps.wickets, " +
+        String query = "SELECT ps.wickets, ps.no_balls, ps.wide_balls, " +
                 "SUM(CASE WHEN ps_opp.team_id != ? THEN ps_opp.balls ELSE 0 END) AS opponent_balls, " +
                 "to1.bowling_order " +
                 "FROM player_stats ps " +
@@ -152,6 +152,8 @@ public class PlayerWicketsServlet extends HttpServlet {
 
             while (rs.next()) {
                 int matchWickets = rs.getInt("wickets");
+                int matchNoBalls = rs.getInt("no_balls");
+                int matchWideBalls = rs.getInt("wide_balls");
                 int matchBalls = rs.getInt("opponent_balls");
 //                [1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
                 List<Integer> bowlingOrder = objectMapper.readValue(rs.getString("bowling_order"), List.class);
@@ -190,6 +192,7 @@ public class PlayerWicketsServlet extends HttpServlet {
                         }
                     }
                 }
+                thisMatchBalls += matchNoBalls + matchWideBalls;
 
                 if (thisMatchBalls > 0) {
                     matchesBowled++;

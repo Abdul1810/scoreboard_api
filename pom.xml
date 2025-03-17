@@ -5,7 +5,7 @@
     <artifactId>zoho_training</artifactId>
     <packaging>war</packaging>
     <version>1.0.0</version>
-    <name>zoho_training Maven Webapp</name>
+    <name>scoreboard_api</name>
     <url>http://maven.apache.org</url>
     <dependencies>
         <dependency>
