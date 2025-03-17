@@ -26,7 +26,6 @@ public class CorsFilter implements Filter {
         httpResponse.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
         httpResponse.setHeader("Access-Control-Allow-Credentials", "true");
         httpResponse.setHeader("Content-Type", "application/json");
-
         try {
             chain.doFilter(request, response);
         } catch (IOException | ServletException e) {

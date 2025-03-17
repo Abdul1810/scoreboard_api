@@ -1,6 +1,7 @@
 package com.api.scoreboard.tournament;
 
 import com.api.util.Database;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -55,29 +56,31 @@ public class TournamentPlayerWickets extends HttpServlet {
         }
     }
 
-    private void fetchPlayerWicketsData(Map<String, Object> jsonResponse, int teamId, int playerId, int tournamentId, String player, int playerIndex) throws Exception {
+    private void fetchPlayerWicketsData(Map<String, Object> jsonResponse, int teamId, int playerId, int tournamentId, String player, int playerIndex) throws SQLException, JsonProcessingException {
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
 
-        String query = "SELECT ps.wickets, t.name AS tournament_name, " +
-                "SUM(CASE WHEN ps_opp.team_id != ? THEN ps_opp.balls ELSE 0 END) AS opponent_balls " +
+        String query = "SELECT ps.wickets, ps.no_balls, ps.wide_balls, " +
+                "SUM(CASE WHEN ps_opp.team_id != ? THEN ps_opp.balls ELSE 0 END) AS opponent_balls, " +
+                "to1.bowling_order, t.name AS tournament_name " +
                 "FROM player_stats ps " +
                 "JOIN matches m ON ps.match_id = m.id " +
                 "JOIN player_stats ps_opp ON ps.match_id = ps_opp.match_id " +
+                "JOIN team_order to1 ON to1.team_id = ? AND to1.match_id = m.id " +
                 "JOIN tournaments t ON m.tournament_id = t.id " +
                 "WHERE ps.player_id = ? AND (m.team1_id = ? OR m.team2_id = ?) " +
                 "AND m.tournament_id = ? " +
                 "GROUP BY ps.match_id, ps.wickets";
 
         try {
-            conn = Database.getConnection();
             stmt = conn.prepareStatement(query);
             stmt.setInt(1, teamId);
-            stmt.setInt(2, playerId);
-            stmt.setInt(3, teamId);
+            stmt.setInt(2, teamId);
+            stmt.setInt(3, playerId);
             stmt.setInt(4, teamId);
-            stmt.setInt(5, tournamentId);
+            stmt.setInt(5, teamId);
+            stmt.setInt(6, tournamentId);
             rs = stmt.executeQuery();
 
             int totalWickets = 0;
@@ -87,28 +90,45 @@ public class TournamentPlayerWickets extends HttpServlet {
 
             while (rs.next()) {
                 int matchWickets = rs.getInt("wickets");
+                int matchNoBalls = rs.getInt("no_balls");
+                int matchWideBalls = rs.getInt("wide_balls");
                 int matchBalls = rs.getInt("opponent_balls");
                 tournamentName = rs.getString("tournament_name");
+
+                List<Integer> bowlingOrder = objectMapper.readValue(rs.getString("bowling_order"), List.class);
                 int thisMatchBalls = 0;
 
                 totalWickets += matchWickets;
-                if (matchBalls <= 66) {
-                    if (playerIndex * 6 <= matchBalls) {
-                        thisMatchBalls += 6;
-                    } else if ((playerIndex - 1) * 6 < matchBalls) {
-                        thisMatchBalls += matchBalls - (playerIndex - 1) * 6;
+
+                if (matchBalls > 0) {
+                    List<Integer> ballsArray = new ArrayList<>();
+                    int balls = matchBalls;
+                    int i = 0;
+
+                    while (balls > 0) {
+                        if (balls >= 6) {
+                            ballsArray.add(6);
+                            balls -= 6;
+                        } else {
+                            ballsArray.add(balls);
+                            balls = 0;
+                        }
+                        i++;
                     }
-                } else {
-                    thisMatchBalls += 6;
-                    int remainingBalls = matchBalls - 66;
-                    if (playerIndex <= 9) {
-                        if (playerIndex * 6 <= remainingBalls) {
-                            thisMatchBalls += 6;
-                        } else if ((playerIndex - 1) * 6 < remainingBalls) {
-                            thisMatchBalls += remainingBalls - (playerIndex - 1) * 6;
+
+                    while (i < 11) {
+                        ballsArray.add(0);
+                        i++;
+                    }
+
+                    for (int j = 0; j < bowlingOrder.size(); j++) {
+                        if (bowlingOrder.get(j) == playerIndex) {
+                            thisMatchBalls += ballsArray.get(j);
                         }
                     }
                 }
+
+                thisMatchBalls += matchNoBalls + matchWideBalls;
 
                 if (thisMatchBalls > 0) {
                     matchesBowled++;
@@ -123,15 +143,9 @@ public class TournamentPlayerWickets extends HttpServlet {
             jsonResponse.put("matches_bowled", matchesBowled);
             jsonResponse.put("tournament_name", tournamentName);
         } finally {
-            if (rs != null) {
-                rs.close();
-            }
-            if (stmt != null) {
-                stmt.close();
-            }
-            if (conn != null) {
-                conn.close();
-            }
+            if (rs != null) rs.close();
+            if (stmt != null) stmt.close();
+            if (conn != null) conn.close();
         }
     }
 

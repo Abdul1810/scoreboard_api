@@ -114,17 +114,6 @@ public class PlayerWicketsServlet extends HttpServlet {
     private void fetchPlayerWicketsData(Connection conn, Map<String, Object> jsonResponse, int teamId, int playerId, String player, int playerIndex) throws Exception {
         PreparedStatement stmt = null;
         ResultSet rs = null;
-        /*
-        SELECT ps.wickets,
-        SUM(CASE WHEN ps_opp.team_id != 12 THEN ps_opp.balls ELSE 0 END) AS opponent_balls,
-        to1.bowling_order
-        FROM player_stats ps
-        JOIN matches m ON ps.match_id = m.id
-        JOIN player_stats ps_opp ON ps.match_id = ps_opp.match_id
-        JOIN team_order to1 ON to1.team_id = 12
-        WHERE ps.player_id = 122 AND (m.team1_id = 12 OR m.team2_id = 12)
-        GROUP BY ps.match_id, ps.wickets;
-         */
         String query = "SELECT ps.wickets, ps.no_balls, ps.wide_balls, " +
                 "SUM(CASE WHEN ps_opp.team_id != ? THEN ps_opp.balls ELSE 0 END) AS opponent_balls, " +
                 "to1.bowling_order " +
