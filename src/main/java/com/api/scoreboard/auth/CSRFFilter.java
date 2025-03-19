@@ -26,24 +26,29 @@ public class CSRFFilter implements Filter {
             return;
         }
         HttpSession session = req.getSession(false);
-        System.out.println("Session ID: " + session.getId());
-        System.out.println("Authenticated: " + session.getAttribute("authenticated"));
-        System.out.println("CSRF Token: " + session.getAttribute("csrfToken"));
 
-        if (session.getAttribute("authenticated") != null && (boolean) session.getAttribute("authenticated")) {
+        if (session != null && session.getAttribute("authenticated") != null && (boolean) session.getAttribute("authenticated")) {
             String csrfTokenFromSession = (String) session.getAttribute("csrfToken");
             String csrfTokenFromHeader = req.getHeader("X-CSRF-TOKEN");
             System.out.println("CSRF Token from session: " + csrfTokenFromSession);
             System.out.println("CSRF Token from header: " + csrfTokenFromHeader);
 
             if (csrfTokenFromSession != null && csrfTokenFromSession.equals(csrfTokenFromHeader)) {
-                chain.doFilter(request, response);
+                String agentFromSession = (String) session.getAttribute("agent");
+                String agentFromHeader = req.getHeader("User-Agent");
+                if (agentFromSession == null || !agentFromSession.equals(agentFromHeader)) {
+                    session.invalidate();
+                    httpResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.getWriter().write("CSRF token validation failed");
+                } else {
+                    chain.doFilter(request, response);
+                }
             } else {
-                ((HttpServletResponse) response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+                httpResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 response.getWriter().write("CSRF token validation failed");
             }
         } else {
-            ((HttpServletResponse) response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+            httpResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.getWriter().write("No valid session found");
         }
     }

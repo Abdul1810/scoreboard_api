@@ -22,8 +22,11 @@ public class CSRFToken extends HttpServlet {
         System.out.println(request.getSession().getAttribute("authenticated"));
         HttpSession session = request.getSession(false);
         if (session.getAttribute("authenticated") != null && (boolean) session.getAttribute("authenticated")) {
-            if (session.getAttribute("agent") != request.getHeader("User-Agent")) {
+            if (session.getAttribute("agent").equals(request.getHeader("User-Agent"))) {
                 jsonResponse.put("csrfToken", (String) session.getAttribute("csrfToken"));
+            } else {
+                session.invalidate();
+                jsonResponse.put("error", "Unauthorized");
             }
         } else {
             jsonResponse.put("error", "Unauthorized");

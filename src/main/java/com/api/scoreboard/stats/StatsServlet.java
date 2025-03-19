@@ -705,7 +705,8 @@ public class StatsServlet extends HttpServlet {
                     "WHERE match_id = ? AND team_id = ?) " +
                     "SELECT ps.sixes, ps.runs, ps.wickets, p.name, p.avatar FROM player_stats ps " +
                     "JOIN players p ON p.id = ps.player_id " +
-                    "JOIN max_stats ms ON ps.match_id = ? AND ps.team_id = ? AND (ps.runs = ms.max_runs OR ps.sixes = ms.max_sixes OR ps.wickets = ms.max_wickets)";
+                    "JOIN max_stats ms ON ps.match_id = ? AND ps.team_id = ? AND " +
+                    "(ps.runs = ms.max_runs OR ps.sixes = ms.max_sixes OR ps.wickets = ms.max_wickets)";
 
             stmt = conn.prepareStatement(query);
             stmt.setInt(1, matchId);
@@ -787,10 +788,9 @@ public class StatsServlet extends HttpServlet {
             textY += 20;
             if (!highestSixes.getOrDefault("sixes", 0).equals(0)) {
                 BufferedImage highestSixesPlayerImage = ImageIO.read(new File(PLAYER_IMAGE_PATH + highestSixes.get("avatar")));
-                int avatarX = startX;
-                g2d.drawImage(highestSixesPlayerImage, avatarX, textY, avatarSize, avatarSize, null);
+                g2d.drawImage(highestSixesPlayerImage, startX, textY, avatarSize, avatarSize, null);
                 String text = highestSixes.get("name") + " (" + highestSixes.get("sixes") + ")";
-                int textX = avatarX + (avatarSize - g2d.getFontMetrics().stringWidth(text)) / 2;
+                int textX = startX + (avatarSize - g2d.getFontMetrics().stringWidth(text)) / 2;
 
                 g2d.setColor(Color.GRAY);
                 g2d.drawString(text, textX + 2, textY + avatarSize + 32);
