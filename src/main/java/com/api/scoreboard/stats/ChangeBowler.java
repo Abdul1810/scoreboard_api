@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 
-@WebServlet("/api/change-bowler")
+@WebServlet("/api/stats/change-bowler")
 public class ChangeBowler extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> jsonResponse = new HashMap<>();
@@ -29,7 +29,7 @@ public class ChangeBowler extends HttpServlet {
         ResultSet rs = null;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             stmt = conn.prepareStatement("SELECT * FROM matches WHERE id = ?");
             stmt.setString(1, matchId);
             rs = stmt.executeQuery();

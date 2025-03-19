@@ -31,7 +31,7 @@ public class MatchServlet extends HttpServlet {
         ResultSet rs1 = null;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             if (matchId != null) {
                 String query = "SELECT * FROM matches WHERE id = ?";
                 stmt = conn.prepareStatement(query);
@@ -172,7 +172,7 @@ public class MatchServlet extends HttpServlet {
         ResultSet rs = null;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             String team1Id = match.get("team1");
             String team2Id = match.get("team2");
 
@@ -222,7 +222,7 @@ public class MatchServlet extends HttpServlet {
         PreparedStatement deleteMatchStmt = null;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
 
             if (conn == null) {
                 jsonResponse.put("message", "Database connection error");

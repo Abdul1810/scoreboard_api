@@ -40,7 +40,7 @@ public class PlayerScoreServlet extends HttpServlet {
         int playerId = -1;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             String playerQuery = "SELECT tp.player_id FROM team_players tp JOIN players p ON tp.player_id = p.id WHERE p.name = ? AND tp.team_id = ?";
             stmt = conn.prepareStatement(playerQuery);
             stmt.setString(1, player);

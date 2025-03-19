@@ -114,7 +114,7 @@ public class StatsListener {
         ResultSet rs = null;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             String query = "SELECT * FROM matches WHERE id = ?";
             stmt = conn.prepareStatement(query);
             stmt.setString(1, matchId);

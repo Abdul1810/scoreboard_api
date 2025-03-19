@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 
-@WebServlet("/api/change-batsman")
+@WebServlet("/api/stats/change-batsman")
 public class ChangeBatsman extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> jsonResponse = new HashMap<>();
@@ -30,15 +30,12 @@ public class ChangeBatsman extends HttpServlet {
         ResultSet rs = null;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             stmt = conn.prepareStatement("SELECT * FROM matches WHERE id = ?");
             stmt.setString(1, matchId);
             rs = stmt.executeQuery();
 
             if (newPlayerIndex == "" && passivePlayerIndex != "") {
-                // set only passive player
-                // first chefck passive player is out or not
-                // if not then set passive player
                 if (rs.next()) {
                     int passiveBatsmanIndex = rs.getInt("passive_batsman_index");
                     if (passiveBatsmanIndex != -1) {
@@ -130,7 +127,6 @@ public class ChangeBatsman extends HttpServlet {
                         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                         return;
                     }
-
 
                     if (passivePlayerIndex == null || passivePlayerIndex.equals("")) {
                         stmt = conn.prepareStatement("UPDATE matches SET active_batsman_index = ? WHERE id = ?");

@@ -33,7 +33,7 @@ public class BannerServlet extends HttpServlet {
         ResultSet rs = null;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             stmt = conn.prepareStatement("SELECT banner_path FROM matches WHERE id = ?");
             stmt.setString(1, matchId);
             rs = stmt.executeQuery();

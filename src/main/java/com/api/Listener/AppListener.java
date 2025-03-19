@@ -15,6 +15,6 @@ public class AppListener implements ServletContextListener {
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
         System.out.println("Application stopped. Closing Database connection.");
-        Database.closeConnection();
+        new Database().closeConnection();
     }
 }

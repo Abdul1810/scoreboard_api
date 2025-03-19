@@ -78,7 +78,7 @@ public class MatchListener {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             stmt = conn.prepareStatement(query);
             rs = stmt.executeQuery();
 

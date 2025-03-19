@@ -40,7 +40,7 @@ public class PlayerWicketsServlet extends HttpServlet {
         Connection conn = null;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             int playerId = getPlayerId(conn, teamId, player);
 
             if (playerId == -1) {

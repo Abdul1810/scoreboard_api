@@ -84,7 +84,7 @@ public class TeamServlet extends HttpServlet {
                 playerAvatarPaths.add(saveImageFile(part, "players"));
             }
 
-            try (Connection conn = Database.getConnection()) {
+            try (Connection conn = new Database().getConnection()) {
                 if (isTeamExists(conn, teamName)) {
                     jsonResponse.put("message", "Team already exists");
                     response.setStatus(400);
@@ -221,7 +221,7 @@ public class TeamServlet extends HttpServlet {
         ResultSet rs = null;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
 
             if (matchId == null) {
                 String query = "SELECT t.id, t.name, t.logo FROM teams t";
@@ -313,7 +313,7 @@ public class TeamServlet extends HttpServlet {
         ResultSet rs = null;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
 
             // Delete team_players associations
             String deleteTeamPlayersQuery = "DELETE FROM team_players WHERE team_id = ?";

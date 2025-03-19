@@ -46,7 +46,7 @@ public class TournamentTeamsServlet extends HttpServlet {
         ResultSet rs = null;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             String query = "SELECT" +
                     " t.id AS team_id," +
                     " t.name AS team_name," +

@@ -5,12 +5,12 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class Database {
-    private static Connection conn;
+    private Connection conn;
     private static final String DATABASE_URL = "jdbc:mysql://localhost:3306/scoreboard";
     private static final String DATABASE_USER = "root";
     private static final String DATABASE_PASSWORD = "";
 
-    private static void initDatabase() {
+    private void initDatabase() {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
             conn = DriverManager.getConnection(DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD);
@@ -19,7 +19,7 @@ public class Database {
         }
     }
 
-    public static Connection getConnection() {
+    public Connection getConnection() {
         try {
             if (conn == null || conn.isClosed()) {
                 initDatabase();
@@ -30,7 +30,7 @@ public class Database {
         return conn;
     }
 
-    public static void closeConnection() {
+    public void closeConnection() {
         try {
             if (conn != null && !conn.isClosed()) {
                 conn.close();

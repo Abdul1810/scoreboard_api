@@ -115,3 +115,12 @@ CREATE TABLE tournament_winners
     FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
     UNIQUE (tournament_id, team_id)
 );
+
+CREATE TABLE users
+(
+    id         INT(11)      NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    username   VARCHAR(255) NOT NULL UNIQUE,
+    password   VARCHAR(255) NOT NULL,
+    salt       VARCHAR(255) NOT NULL,
+    created_at DATETIME     NOT NULL DEFAULT current_timestamp()
+);

@@ -45,7 +45,7 @@ public class HighlightsServlet extends HttpServlet {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             stmt = conn.prepareStatement("SELECT * FROM matches WHERE id = ?");
             stmt.setString(1, matchId);
             rs = stmt.executeQuery();
@@ -131,7 +131,7 @@ public class HighlightsServlet extends HttpServlet {
         ResultSet rs = null;
         ResultSet rs1 = null;
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             String query = "SELECT * FROM matches WHERE id = ?";
             stmt = conn.prepareStatement(query);
             stmt.setInt(1, Integer.parseInt(matchId));

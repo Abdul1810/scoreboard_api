@@ -158,7 +158,7 @@ public class TournamentPlayerWickets extends HttpServlet {
                 "JOIN players p ON tp.player_id = p.id " +
                 "WHERE m.tournament_id = ? AND tp.player_id = ? LIMIT 1";
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             stmt = conn.prepareStatement(query);
             stmt.setString(1, tournamentId);
             stmt.setString(2, playerId);

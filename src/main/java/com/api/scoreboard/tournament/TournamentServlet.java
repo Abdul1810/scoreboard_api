@@ -42,7 +42,7 @@ public class TournamentServlet extends HttpServlet {
             ResultSet rs = null;
 
             try {
-                conn = Database.getConnection();
+                conn = new Database().getConnection();
                 stmt = conn.prepareStatement("SELECT * FROM tournaments WHERE name = ?");
                 stmt.setString(1, name);
                 rs = stmt.executeQuery();
@@ -116,7 +116,7 @@ public class TournamentServlet extends HttpServlet {
         String tId = request.getParameter("id");
         if (tId == null) {
             try {
-                conn = Database.getConnection();
+                conn = new Database().getConnection();
                 String sql = "SELECT t.id AS tournament_id, t.name AS tournament_name, t.created_at AS tournament_created_at, " + "m.id AS match_id, team1.name AS team1_name, team2.name AS team2_name " + "FROM tournaments t " + "LEFT JOIN matches m ON t.id = m.tournament_id AND m.is_completed = 'false' " + "LEFT JOIN teams team1 ON m.team1_id = team1.id " + "LEFT JOIN teams team2 ON m.team2_id = team2.id " + "ORDER BY t.id, m.id";
 
                 stmt = conn.prepareStatement(sql);
@@ -161,7 +161,7 @@ public class TournamentServlet extends HttpServlet {
             }
         } else {
             try {
-                conn = Database.getConnection();
+                conn = new Database().getConnection();
                 stmt = conn.prepareStatement("SELECT t.id AS tournament_id, t.name AS tournament_name, t.status, t.created_at, tm.name AS winning_team_name " + "FROM tournaments t " + "LEFT JOIN teams tm ON t.winner_id = tm.id " + "WHERE t.id = ?");
                 stmt.setString(1, tId);
                 rs = stmt.executeQuery();
@@ -230,7 +230,7 @@ public class TournamentServlet extends HttpServlet {
         }
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             stmt = conn.prepareStatement("SELECT * FROM tournaments WHERE id = ?");
             stmt.setString(1, tId);
             rs = stmt.executeQuery();

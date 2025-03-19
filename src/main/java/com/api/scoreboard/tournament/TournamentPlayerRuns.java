@@ -32,7 +32,7 @@ public class TournamentPlayerRuns extends HttpServlet {
         ResultSet rs = null;
 
         try {
-            conn = Database.getConnection();
+            conn = new Database().getConnection();
             String query = "SELECT" +
                     " ps.player_id," +
                     " p.name AS player_name," +
