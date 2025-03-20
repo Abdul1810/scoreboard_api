@@ -8,26 +8,28 @@ import java.sql.*;
 import java.util.*;
 
 public class Match {
-    public static int create(Connection conn, int team1Id, int team2Id) throws Exception {
-        return create(conn, team1Id, team2Id, -1);
+    public static int create(Connection conn, int userId, int team1Id, int team2Id) throws Exception {
+        return create(conn, userId, team1Id, team2Id, -1);
     }
 
-    public static int create(Connection conn, int team1Id, int team2Id, int tournamentId) throws Exception {
+    public static int create(Connection conn, int userId, int team1Id, int team2Id, int tournamentId) throws Exception {
         String insertMatchQuery;
         PreparedStatement insertMatchStmt;
         ResultSet rs;
         int matchId = -1;
         if (tournamentId != -1) {
-            insertMatchQuery = "INSERT INTO matches (team1_id, team2_id, tournament_id, is_completed, winner, current_batting, active_batsman_index, passive_batsman_index, active_bowler_index) VALUES (?, ?, ?, 'false', 'none', 'team1', -1, -1, -1)";
+            insertMatchQuery = "INSERT INTO matches (user_id, team1_id, team2_id, tournament_id, is_completed, winner, current_batting, active_batsman_index, passive_batsman_index, active_bowler_index) VALUES (?, ?, ?, ?, 'false', 'none', 'team1', -1, -1, -1)";
             insertMatchStmt = conn.prepareStatement(insertMatchQuery, Statement.RETURN_GENERATED_KEYS);
-            insertMatchStmt.setInt(1, team1Id);
-            insertMatchStmt.setInt(2, team2Id);
-            insertMatchStmt.setInt(3, tournamentId);
+            insertMatchStmt.setInt(1, userId);
+            insertMatchStmt.setInt(2, team1Id);
+            insertMatchStmt.setInt(3, team2Id);
+            insertMatchStmt.setInt(4, tournamentId);
         } else {
-            insertMatchQuery = "INSERT INTO matches (team1_id, team2_id, is_completed, winner, current_batting, active_batsman_index, passive_batsman_index, active_bowler_index) VALUES (?, ?, 'false', 'none', 'team1', -1, -1, -1)";
+            insertMatchQuery = "INSERT INTO matches (user_id, team1_id, team2_id, is_completed, winner, current_batting, active_batsman_index, passive_batsman_index, active_bowler_index) VALUES (?, ?, ?, 'false', 'none', 'team1', -1, -1, -1)";
             insertMatchStmt = conn.prepareStatement(insertMatchQuery, Statement.RETURN_GENERATED_KEYS);
-            insertMatchStmt.setInt(1, team1Id);
-            insertMatchStmt.setInt(2, team2Id);
+            insertMatchStmt.setInt(1, userId);
+            insertMatchStmt.setInt(2, team1Id);
+            insertMatchStmt.setInt(3, team2Id);
         }
         insertMatchStmt.executeUpdate();
 
@@ -75,14 +77,27 @@ public class Match {
     }
 
     public static Map<String, Object> get(Connection conn, int matchId) throws Exception {
+        return get(conn, matchId, -1);
+    }
+
+    public static Map<String, Object> get(Connection conn, int matchId, int userId) throws Exception {
         PreparedStatement stmt;
         ResultSet rs;
         ResultSet rs1;
+        String query;
 
-        String query = "SELECT * FROM matches WHERE id = ?";
-        stmt = conn.prepareStatement(query);
-        stmt.setInt(1, matchId);
-        rs = stmt.executeQuery();
+        if (userId != -1) {
+            query = "SELECT * FROM matches WHERE id = ? AND user_id = ?";
+            stmt = conn.prepareStatement(query);
+            stmt.setInt(1, matchId);
+            stmt.setInt(2, userId);
+            rs = stmt.executeQuery();
+        } else {
+            query = "SELECT * FROM matches WHERE id = ?";
+            stmt = conn.prepareStatement(query);
+            stmt.setInt(1, matchId);
+            rs = stmt.executeQuery();
+        }
 
         if (rs.next()) {
             query = "    SELECT m.id, m.team1_id, m.team2_id, m.is_completed" +
@@ -298,6 +313,22 @@ public class Match {
         } catch (JsonProcessingException e) {
             System.out.println("Error converting to JSON: " + e.getMessage());
             return null;
+        }
+    }
+
+    public static boolean isOwner(Connection conn, int matchId, int userId) {
+        PreparedStatement stmt;
+        ResultSet rs;
+        try {
+            String query = "SELECT * FROM matches WHERE id = ? AND user_id = ?";
+            stmt = conn.prepareStatement(query);
+            stmt.setInt(1, matchId);
+            stmt.setInt(2, userId);
+            rs = stmt.executeQuery();
+            return rs.next();
+        } catch (SQLException e) {
+            System.out.println("Error checking match owner: " + e.getMessage());
+            return false;
         }
     }
 }

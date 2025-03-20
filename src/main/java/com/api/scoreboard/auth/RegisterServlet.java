@@ -14,8 +14,8 @@ import java.security.spec.InvalidKeySpecException;
 import java.sql.*;
 import java.util.*;
 
-@WebServlet("/api/auth/login")
-public class LoginServlet extends HttpServlet {
+@WebServlet("/api/auth/register")
+public class RegisterServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -28,34 +28,43 @@ public class LoginServlet extends HttpServlet {
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
-
         try {
             conn = new Database().getConnection();
             stmt = conn.prepareStatement("SELECT * FROM users WHERE username = ?");
             stmt.setString(1, username);
             rs = stmt.executeQuery();
             if (rs.next()) {
-                String salt = rs.getString("salt");
-                String hashedPassword = rs.getString("password");
-                if (PBKDF2Encryption.verifyPassword(password, salt, hashedPassword)) {
+                jsonResponse.put("error", "Username already taken");
+                response.setStatus(HttpServletResponse.SC_CONFLICT);
+            } else {
+                if (password.length() < 8) {
+                    jsonResponse.put("error", "Password must be at least 8 characters long");
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                } else {
+                    String salt = PBKDF2Encryption.generateSalt();
+                    String hashedPassword = PBKDF2Encryption.encryptPassword(password, salt);
+                    stmt = conn.prepareStatement("INSERT INTO users (username, password, salt) VALUES (?, ?, ?)", PreparedStatement.RETURN_GENERATED_KEYS);
+                    stmt.setString(1, username);
+                    stmt.setString(2, hashedPassword);
+                    stmt.setString(3, salt);
+                    stmt.executeUpdate();
+                    rs = stmt.getGeneratedKeys();
+                    rs.next();
+                    int userId = rs.getInt(1);
                     request.getSession(true);
                     request.getSession().setAttribute("authenticated", true);
-                    request.getSession().setAttribute("uid", rs.getInt("id"));
-                    request.getSession().setAttribute("username", rs.getString("username"));
+                    request.getSession().setAttribute("uid", userId);
+                    request.getSession().setAttribute("username", username);
+                    jsonResponse.put("message", "User registered successfully");
                     String csrfToken = UUID.randomUUID().toString();
                     request.getSession().setAttribute("agent", request.getHeader("User-Agent"));
                     request.getSession().setAttribute("csrfToken", csrfToken);
                     jsonResponse.put("csrfToken", csrfToken);
-                    jsonResponse.put("username", rs.getString("username"));
-                } else {
-                    jsonResponse.put("error", "Invalid username or password");
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    jsonResponse.put("username", username);
                 }
-            } else {
-                jsonResponse.put("error", "user not found");
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             }
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | SQLException e) {
+            System.out.println("Error registering user: " + e.getMessage());
             jsonResponse.put("error", "Internal server error");
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } finally {
@@ -74,9 +83,8 @@ public class LoginServlet extends HttpServlet {
             }
         }
 
-        response.setContentType("application/json");
         response
-            .getWriter()
-            .write(objectMapper.writeValueAsString(jsonResponse));
+                .getWriter()
+                .write(objectMapper.writeValueAsString(jsonResponse));
     }
 }

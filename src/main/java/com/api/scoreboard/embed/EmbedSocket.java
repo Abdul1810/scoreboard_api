@@ -34,6 +34,7 @@ public class EmbedSocket {
                 session.close();
             } else {
                 String matchId = rs.getString("match_id");
+                System.out.println("Match ID: " + matchId);
                 EmbedListener.addSession(embedCode, session, matchId);
             }
         } catch (Exception e) {

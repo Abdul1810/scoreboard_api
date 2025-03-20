@@ -354,7 +354,8 @@ public class TeamServlet extends HttpServlet {
                 stmt.executeUpdate();
             }
 
-            MatchListener.fireMatchesUpdate();
+            int userId = (int) request.getAttribute("uid");
+            MatchListener.fireMatchesUpdate(userId);
             for (int matchId : matchIds) {
                 StatsListener.fireStatsRemove(String.valueOf(matchId));
                 EmbedListener.fireEmbedRemove(String.valueOf(matchId));

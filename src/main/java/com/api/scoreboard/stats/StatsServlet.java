@@ -65,7 +65,8 @@ public class StatsServlet extends HttpServlet {
             conn = new Database().getConnection();
             String query = "SELECT" +
                     " t1.id AS team1_id, t2.id AS team2_id, t1.name AS team1_name, t2.name AS team2_name," +
-                    " m.current_batting, m.is_completed, m.winner, m.active_batsman_index, m.passive_batsman_index, m.active_bowler_index, m.tournament_id, m.highlights_path" +
+                    " m.current_batting, m.is_completed, m.winner, m.active_batsman_index, m.passive_batsman_index," +
+                    " m.active_bowler_index, m.tournament_id, m.highlights_path, m.user_id" +
                     " FROM matches m" +
                     " JOIN teams t1 ON m.team1_id = t1.id" +
                     " JOIN teams t2 ON m.team2_id = t2.id" +
@@ -73,10 +74,16 @@ public class StatsServlet extends HttpServlet {
             stmt = conn.prepareStatement(query);
             stmt.setInt(1, Integer.parseInt(matchId));
             rs = stmt.executeQuery();
+            int userId = (int) request.getSession().getAttribute("uid");
 
             if (!rs.next()) {
                 response.setStatus(404);
                 jsonResponse.put("message", "Match not found");
+                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+                return;
+            } else if (rs.getInt("user_id") != userId) {
+                response.setStatus(403);
+                jsonResponse.put("message", "Unauthorized access");
                 response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
                 return;
             }
@@ -406,7 +413,7 @@ public class StatsServlet extends HttpServlet {
                 int team2Score = team2PlayersMap.values().stream().mapToInt(player -> (int) player.get("runs")).sum() + team1PlayersMap.values().stream().mapToInt(player -> (int) player.get("wide_balls")).sum() + team1PlayersMap.values().stream().mapToInt(player -> (int) player.get("no_balls")).sum();
                 if (team2Score > team1Score) {
                     if (tournamentId != 0) {
-                        updateTournament(team2Id, tournamentId);
+                        updateTournament(team2Id, tournamentId, userId);
                     }
                     matchStats.put("winner", "team2");
                     matchStats.put("is_completed", "true");
@@ -414,7 +421,7 @@ public class StatsServlet extends HttpServlet {
                 if (team2_balls == 120 || matchStats.get("team2_wickets").equals("10")) {
                     if (team1Score > team2Score) {
                         if (tournamentId != 0) {
-                            updateTournament(team1Id, tournamentId);
+                            updateTournament(team1Id, tournamentId, userId);
                         }
                         matchStats.put("winner", "team1");
                         matchStats.put("is_completed", "true");
@@ -602,7 +609,7 @@ public class StatsServlet extends HttpServlet {
         return sortedMap;
     }
 
-    private void updateTournament(int winningTeamId, int tournamentId) {
+    private void updateTournament(int winningTeamId, int tournamentId, int userId) {
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
@@ -615,13 +622,13 @@ public class StatsServlet extends HttpServlet {
             rs = stmt.executeQuery();
             if (rs.next()) {
                 int oldWinnerId = rs.getInt("team_id");
-                Match.create(conn, oldWinnerId, winningTeamId, tournamentId);
+                Match.create(conn, userId, oldWinnerId, winningTeamId, tournamentId);
                 conn = new Database().getConnection();
                 query = "DELETE FROM tournament_winners WHERE tournament_id = ?";
                 stmt = conn.prepareStatement(query);
                 stmt.setInt(1, tournamentId);
                 stmt.executeUpdate();
-                MatchListener.fireMatchesUpdate();
+                MatchListener.fireMatchesUpdate(userId);
             } else {
                 query = "INSERT INTO tournament_winners (tournament_id, team_id) VALUES (?, ?)";
                 stmt = conn.prepareStatement(query);

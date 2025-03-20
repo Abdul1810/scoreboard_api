@@ -56,9 +56,6 @@ CREATE TABLE matches
     FOREIGN KEY (tournament_id) REFERENCES tournaments (id) ON DELETE SET NULL
 );
 
-ALTER TABLE matches
-    ADD COLUMN banner_path VARCHAR(255) NULL;
-
 CREATE TABLE team_order
 (
     id         INT(11)  NOT NULL AUTO_INCREMENT PRIMARY KEY,

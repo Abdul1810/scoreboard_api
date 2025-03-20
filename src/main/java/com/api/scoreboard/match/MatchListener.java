@@ -13,14 +13,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class MatchListener {
-    private static final Map<String, Session> matchSessions = new HashMap<>();
+    private static final Map<String, Session> sessions = new HashMap<>();
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Map<String, CopyOnWriteArrayList<Session>> userSessions = new HashMap<>();
 
-    public static void addSession(String sessionId, Session session) {
-        matchSessions.put(sessionId, session);
-        List<Map<String, String>> matches = fetchMatchesFromDatabase();
+    public static void addSession(String sessionId, Session session, int userId) {
+        sessions.put(sessionId, session);
+        List<Map<String, String>> matches = fetchMatchesFromDatabase(userId);
+        // userId: [session1, session2, ...]
+        if (userSessions.containsKey(String.valueOf(userId))) {
+            userSessions.get(String.valueOf(userId)).add(session);
+        } else {
+            CopyOnWriteArrayList<Session> userSessionList = new CopyOnWriteArrayList<>();
+            userSessionList.add(session);
+            userSessions.put(String.valueOf(userId), userSessionList);
+        }
 
         try {
             session.getBasicRemote().sendText(objectMapper.writeValueAsString(matches));
@@ -30,19 +40,19 @@ public class MatchListener {
     }
 
     public static void removeSession(String sessionId) {
-        matchSessions.remove(sessionId);
+        sessions.remove(sessionId);
     }
 
-    public static void fireMatchesUpdate() {
-        sendMatchesToAllSessions();
+    public static void fireMatchesUpdate(int userId) {
+        sendMatchesToAllSessions(userId);
     }
 
-    private static void sendMatchesToAllSessions() {
-        List<Map<String, String>> matches = fetchMatchesFromDatabase();
-        List<Session> sendingSessions = new ArrayList<>(matchSessions.values());
+    private static void sendMatchesToAllSessions(int userId) {
+        List<Session> sendingSessions = new ArrayList<>(userSessions.get(String.valueOf(userId)));
         while (!sendingSessions.isEmpty()) {
             List<Session> toRemove = new ArrayList<>();
             for (Session session : sendingSessions) {
+                List<Map<String, String>> matches = fetchMatchesFromDatabase(userId);
                 try {
                     System.out.println("Send content to session: " + session.getId());
                     if (!session.isOpen()) {
@@ -59,7 +69,30 @@ public class MatchListener {
         }
     }
 
-    private static List<Map<String, String>> fetchMatchesFromDatabase() {
+    private static void sendMatchesToAllSessions() {
+        List<Session> sendingSessions = new ArrayList<>(sessions.values());
+        while (!sendingSessions.isEmpty()) {
+            List<Session> toRemove = new ArrayList<>();
+            for (Session session : sendingSessions) {
+                int userId = Integer.parseInt(session.getRequestParameterMap().get("userId").get(0));
+                List<Map<String, String>> matches = fetchMatchesFromDatabase(userId);
+                try {
+                    System.out.println("Send content to session: " + session.getId());
+                    if (!session.isOpen()) {
+                        toRemove.add(session);
+                        continue;
+                    }
+                    session.getBasicRemote().sendText(objectMapper.writeValueAsString(matches));
+                    toRemove.add(session);
+                } catch (Exception e) {
+                    System.out.println("Error sending content to session: " + session.getId());
+                }
+            }
+            sendingSessions.removeAll(toRemove);
+        }
+    }
+
+    private static List<Map<String, String>> fetchMatchesFromDatabase(int userId) {
         List<Map<String, String>> matches = new ArrayList<>();
         String query = "SELECT m.id, t1.name AS team1, t2.name AS team2, m.created_at, " +
                 "m.is_completed, m.highlights_path, m.winner, " +
@@ -72,7 +105,8 @@ public class MatchListener {
                 "FROM matches m " +
                 "JOIN teams t1 ON m.team1_id = t1.id " +
                 "JOIN teams t2 ON m.team2_id = t2.id " +
-                "ORDER BY m.id ASC";
+                "WHERE m.user_id = ? " +
+                "ORDER BY m.id";
 
         Connection conn = null;
         PreparedStatement stmt = null;
@@ -80,6 +114,7 @@ public class MatchListener {
         try {
             conn = new Database().getConnection();
             stmt = conn.prepareStatement(query);
+            stmt.setInt(1, userId);
             rs = stmt.executeQuery();
 
             while (rs.next()) {

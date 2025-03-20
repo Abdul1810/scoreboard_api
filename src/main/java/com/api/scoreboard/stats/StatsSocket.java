@@ -1,10 +1,13 @@
 package com.api.scoreboard.stats;
 
+import com.api.scoreboard.commons.Match;
+import com.api.util.Database;
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnOpen;
 import jakarta.websocket.Session;
 import jakarta.websocket.server.ServerEndpoint;
 
+import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,11 +25,41 @@ public class StatsSocket {
         String matchId = session.getRequestParameterMap().get("id").get(0);
         if (matchId == null) {
             try {
+                session.getBasicRemote().sendText("not-found");
                 session.close();
             } catch (Exception e) {
                 System.out.println("Error closing session");
             }
             return;
+//        } else {
+//            Connection conn = null;
+//            try {
+//                conn = new Database().getConnection();
+//                if (!Match.isOwner(conn, Integer.parseInt(matchId), (int) session.getUserProperties().get("uid"))) {
+//                    try {
+//                        session.close();
+//                    } catch (Exception e) {
+//                        System.out.println("Error closing session");
+//                    }
+//                    return;
+//                }
+//            } catch (Exception e) {
+//                System.out.println("Error while checking match owner : " + e.getMessage());
+//                try {
+//                    session.close();
+//                } catch (Exception ex) {
+//                    System.out.println("Error closing session");
+//                }
+//                return;
+//            } finally {
+//                try {
+//                    if (conn != null) {
+//                        conn.close();
+//                    }
+//                } catch (Exception e) {
+//                    System.out.println("Error while closing connection : " + e.getMessage());
+//                }
+//            }
         }
         StatsListener.addSession(matchId, session);
         sessionMapWithMatchId.put(session.getId(), matchId);

@@ -27,6 +27,7 @@ public class VerifyServlet extends HttpServlet {
         if (session != null && session.getAttribute("authenticated") != null && (boolean) session.getAttribute("authenticated")) {
             if (session.getAttribute("agent").equals(request.getHeader("User-Agent"))) {
                 jsonResponse.put("csrfToken", (String) session.getAttribute("csrfToken"));
+                jsonResponse.put("username", (String) session.getAttribute("username"));
             } else {
                 session.invalidate();
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

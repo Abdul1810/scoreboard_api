@@ -26,16 +26,17 @@ public class MatchServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String matchId = request.getParameter("id");
+        int userId = (int) request.getSession().getAttribute("uid");
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
             conn = new Database().getConnection();
             if (matchId != null) {
-                Map<String, Object> matchData = Match.get(conn, Integer.parseInt(matchId));
+                Map<String, Object> matchData = Match.get(conn, Integer.parseInt(matchId), userId);
                 response.getWriter().write(objectMapper.writeValueAsString(matchData));
             } else {
-                String query = "SELECT * FROM matches";
+                String query = "SELECT * FROM matches WHERE user_id = ?";
                 stmt = conn.prepareStatement(query);
                 rs = stmt.executeQuery();
 
@@ -107,8 +108,9 @@ public class MatchServlet extends HttpServlet {
                 return;
             }
 
-            int matchId = Match.create(conn, Integer.parseInt(team1Id), Integer.parseInt(team2Id));
-            MatchListener.fireMatchesUpdate();
+            int userId = (int) request.getSession().getAttribute("uid");
+            int matchId = Match.create(conn, userId, Integer.parseInt(team1Id), Integer.parseInt(team2Id));
+            MatchListener.fireMatchesUpdate(userId);
             jsonResponse.put("message", "success");
             jsonResponse.put("id", String.valueOf(matchId));
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
@@ -211,9 +213,10 @@ public class MatchServlet extends HttpServlet {
                 }
             }
 
+            int userId = (int) request.getSession().getAttribute("uid");
             StatsListener.fireStatsRemove(matchId);
             EmbedListener.fireMatchRemove(matchId);
-            MatchListener.fireMatchesUpdate();
+            MatchListener.fireMatchesUpdate(userId);
             jsonResponse.put("message", "success");
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } catch (SQLException e) {
