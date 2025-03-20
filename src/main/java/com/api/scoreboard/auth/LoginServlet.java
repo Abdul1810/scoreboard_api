@@ -37,10 +37,10 @@ public class LoginServlet extends HttpServlet {
             if (rs.next()) {
                 String salt = rs.getString("salt");
                 String hashedPassword = rs.getString("password");
-
                 if (PBKDF2Encryption.verifyPassword(password, salt, hashedPassword)) {
                     request.getSession(true);
                     request.getSession().setAttribute("authenticated", true);
+                    request.getSession().setAttribute("uid", rs.getInt("id"));
                     String csrfToken = UUID.randomUUID().toString();
                     request.getSession().setAttribute("agent", request.getHeader("User-Agent"));
                     request.getSession().setAttribute("csrfToken", csrfToken);

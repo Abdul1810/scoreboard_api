@@ -124,3 +124,15 @@ CREATE TABLE users
     salt       VARCHAR(255) NOT NULL,
     created_at DATETIME     NOT NULL DEFAULT current_timestamp()
 );
+
+CREATE TABLE embeds
+(
+    id         INT(11)      NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id    INT(11)      NOT NULL,
+    match_id   INT(11)      NOT NULL,
+    embed_code TEXT         NOT NULL,
+    created_at DATETIME     NOT NULL DEFAULT current_timestamp(),
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    FOREIGN KEY (match_id) REFERENCES matches (id) ON DELETE CASCADE,
+    UNIQUE (user_id, match_id)
+);

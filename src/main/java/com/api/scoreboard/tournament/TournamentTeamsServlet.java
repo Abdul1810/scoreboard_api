@@ -18,21 +18,7 @@ import java.util.*;
 public class TournamentTeamsServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, Object> jsonResponse = new HashMap<>();
-    /*
-    TOTAL SCORE:
-        SELECT
-            ps.player_id,
-            p.name AS player_name,
-            t.id AS tournament_id,
-            t.name AS tournament_name,
-            SUM(ps.runs) AS total_runs
-        FROM player_stats ps
-        JOIN matches m ON ps.match_id = m.id
-        JOIN tournaments t ON m.tournament_id = t.id
-        JOIN players p ON ps.player_id = p.id
-        WHERE t.id = ? AND ps.player_id = ?
-        GROUP BY ps.player_id, t.id;
-     */
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) {
         String id = request.getParameter("id");

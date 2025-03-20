@@ -8,12 +8,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
-import java.util.UUID;
 import java.util.HashMap;
 import java.util.Map;
 
 @WebServlet("/api/auth/verify")
-public class CSRFToken extends HttpServlet {
+public class VerifyServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -21,14 +20,20 @@ public class CSRFToken extends HttpServlet {
         Map<String, String> jsonResponse = new HashMap<>();
         System.out.println(request.getSession().getAttribute("authenticated"));
         HttpSession session = request.getSession(false);
-        if (session.getAttribute("authenticated") != null && (boolean) session.getAttribute("authenticated")) {
+        if (session != null) {
+            System.out.println("Printing session attributes in VerifyServlet");
+            session.getAttributeNames().asIterator().forEachRemaining(System.out::println);
+        }
+        if (session != null && session.getAttribute("authenticated") != null && (boolean) session.getAttribute("authenticated")) {
             if (session.getAttribute("agent").equals(request.getHeader("User-Agent"))) {
                 jsonResponse.put("csrfToken", (String) session.getAttribute("csrfToken"));
             } else {
                 session.invalidate();
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 jsonResponse.put("error", "Unauthorized");
             }
         } else {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             jsonResponse.put("error", "Unauthorized");
         }
 

@@ -22,10 +22,12 @@ public class PBKDF2Encryption {
 
     public static String encryptPassword(String password, String salt)
             throws NoSuchAlgorithmException, InvalidKeySpecException {
-        PBEKeySpec spec = new PBEKeySpec(password.toCharArray(),
+        PBEKeySpec spec = new PBEKeySpec(
+                password.toCharArray(),
                 Base64.getDecoder().decode(salt),
                 ITERATIONS,
-                KEY_LENGTH);
+                KEY_LENGTH
+        );
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
         byte[] hash = factory.generateSecret(spec).getEncoded();
         return Base64.getEncoder().encodeToString(hash);
@@ -34,19 +36,18 @@ public class PBKDF2Encryption {
     public static boolean verifyPassword(String inputPassword, String storedSalt, String storedHashedPassword)
             throws NoSuchAlgorithmException, InvalidKeySpecException {
         String hashedInputPassword = encryptPassword(inputPassword, storedSalt);
-        byte[] inputHashBytes = Base64.getDecoder().decode(hashedInputPassword);
-        byte[] storedHashBytes = Base64.getDecoder().decode(storedHashedPassword);
-
-        return MessageDigest.isEqual(inputHashBytes, storedHashBytes);
+        return hashedInputPassword.equals(storedHashedPassword);
+//        byte[] inputHashBytes = Base64.getDecoder().decode(hashedInputPassword);
+//        byte[] storedHashBytes = Base64.getDecoder().decode(storedHashedPassword);
+//
+//        return MessageDigest.isEqual(inputHashBytes, storedHashBytes);
     }
 
 //    public static void main(String[] args) {
 //        try {
 //            String password = "12345678";
-////            String salt = generateSalt();
-////            String encryptedPassword = encryptPassword(password, salt);
-//            String salt = "S8gXTptQOcnsOCU3S7XzDg==";
-//            String encryptedPassword = "tgB3S+ikpEFf0+d8wOMuTvVJR/GxX3t+K6ooxm7pgA8=";
+//            String salt = generateSalt();
+//            String encryptedPassword = encryptPassword(password, salt);
 //
 //            System.out.println("Password: " + password);
 //            System.out.println("Salt: " + salt);

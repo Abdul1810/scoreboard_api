@@ -1,5 +1,6 @@
 package com.api.scoreboard.match;
 
+import com.api.scoreboard.embed.EmbedListener;
 import com.api.scoreboard.stats.StatsListener;
 import com.api.scoreboard.commons.Match;
 import com.api.util.Database;
@@ -28,91 +29,11 @@ public class MatchServlet extends HttpServlet {
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
-        ResultSet rs1 = null;
-
         try {
             conn = new Database().getConnection();
             if (matchId != null) {
-                String query = "SELECT * FROM matches WHERE id = ?";
-                stmt = conn.prepareStatement(query);
-                stmt.setInt(1, Integer.parseInt(matchId));
-                rs = stmt.executeQuery();
-
-                if (rs.next()) {
-                    query = "    SELECT m.id, m.team1_id, m.team2_id, m.is_completed" +
-                            "    FROM matches m" +
-                            "    WHERE m.tournament_id = ?" +
-                            "    AND m.is_completed = 'false'" +
-                            "    ORDER BY m.id";
-                    stmt = conn.prepareStatement(query);
-                    stmt.setInt(1, rs.getInt("tournament_id"));
-                    rs1 = stmt.executeQuery();
-                    List<Integer> tournamentMatches = new ArrayList<>();
-
-                    while (rs1.next()) {
-                        tournamentMatches.add(rs1.getInt("id"));
-                    }
-
-                    if (!tournamentMatches.isEmpty() && tournamentMatches.contains(rs.getInt("id"))) {
-                        System.out.println(tournamentMatches.size());
-                        tournamentMatches.forEach(System.out::println);
-                        if (tournamentMatches.get(0) != rs.getInt("id")) {
-                            response.setStatus(403);
-                            jsonResponse.put("message", "Match cannot be accessed");
-                            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-                            return;
-                        }
-                    }
-
-                    Map<String, Integer> matchIds = new HashMap<>();
-                    matchIds.put("id", rs.getInt("id"));
-                    matchIds.put("team1_id", rs.getInt("team1_id"));
-                    matchIds.put("team2_id", rs.getInt("team2_id"));
-
-                    Map<String, Object> match = new HashMap<>();
-                    match.put("id", String.valueOf(matchIds.get("id")));
-                    match.put("is_completed", rs.getString("is_completed"));
-                    match.put("highlights_path", rs.getString("highlights_path"));
-                    match.put("winner", rs.getString("winner"));
-                    match.put("current_batting", rs.getString("current_batting"));
-                    match.put("active_batsman_index", rs.getInt("active_batsman_index"));
-                    match.put("passive_batsman_index", rs.getInt("passive_batsman_index"));
-
-                    query = "SELECT t.name, t.logo, p.name as player_name FROM teams t JOIN team_players tp ON t.id = tp.team_id JOIN players p ON tp.player_id = p.id WHERE t.id = ?";
-                    stmt = conn.prepareStatement(query);
-
-                    stmt.setInt(1, matchIds.get("team1_id"));
-                    rs = stmt.executeQuery();
-
-                    if (rs.next()) {
-                        match.put("team1", rs.getString("name"));
-                        match.put("team1_logo", "http://localhost:8080/image/teams?name=" + rs.getString("logo") + "&q=low");
-                        List<String> team1Players = new ArrayList<>();
-                        do {
-                            team1Players.add(rs.getString("player_name"));
-                        } while (rs.next());
-                        match.put("team1_players", team1Players);
-                    }
-
-                    stmt.setInt(1, matchIds.get("team2_id"));
-                    rs = stmt.executeQuery();
-
-                    if (rs.next()) {
-                        match.put("team2", rs.getString("name"));
-                        match.put("team2_logo", "http://localhost:8080/image/teams?name=" + rs.getString("logo") + "&q=low");
-                        List<String> team2Players = new ArrayList<>();
-                        do {
-                            team2Players.add(rs.getString("player_name"));
-                        } while (rs.next());
-                        match.put("team2_players", team2Players);
-                    }
-
-                    response.getWriter().write(objectMapper.writeValueAsString(match));
-                } else {
-                    response.setStatus(404);
-                    jsonResponse.put("message", "Match not found");
-                    response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
-                }
+                Map<String, Object> matchData = Match.get(conn, Integer.parseInt(matchId));
+                response.getWriter().write(objectMapper.writeValueAsString(matchData));
             } else {
                 String query = "SELECT * FROM matches";
                 stmt = conn.prepareStatement(query);
@@ -152,10 +73,13 @@ public class MatchServlet extends HttpServlet {
             jsonResponse.put("message", "Invalid match ID format");
             response.setStatus(400);
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+        } catch (Exception e) {
+            jsonResponse.put("message", "Error fetching match: " + e.getMessage());
+            response.setStatus(500);
+            response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
         } finally {
             try {
                 if (rs != null) rs.close();
-                if (rs1 != null) rs1.close();
                 if (stmt != null) stmt.close();
                 if (conn != null) conn.close();
             } catch (SQLException e) {
@@ -288,6 +212,7 @@ public class MatchServlet extends HttpServlet {
             }
 
             StatsListener.fireStatsRemove(matchId);
+            EmbedListener.fireMatchRemove(matchId);
             MatchListener.fireMatchesUpdate();
             jsonResponse.put("message", "success");
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));

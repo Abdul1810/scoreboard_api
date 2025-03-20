@@ -1,5 +1,6 @@
 package com.api.scoreboard.team;
 
+import com.api.scoreboard.embed.EmbedListener;
 import com.api.scoreboard.stats.StatsListener;
 import com.api.scoreboard.match.MatchListener;
 import com.api.util.Database;
@@ -356,6 +357,7 @@ public class TeamServlet extends HttpServlet {
             MatchListener.fireMatchesUpdate();
             for (int matchId : matchIds) {
                 StatsListener.fireStatsRemove(String.valueOf(matchId));
+                EmbedListener.fireEmbedRemove(String.valueOf(matchId));
             }
             jsonResponse.put("message", "Team deleted successfully");
             response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));

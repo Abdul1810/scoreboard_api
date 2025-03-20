@@ -1,5 +1,6 @@
 package com.api.scoreboard.tournament;
 
+import com.api.scoreboard.embed.EmbedListener;
 import com.api.scoreboard.stats.StatsListener;
 import com.api.scoreboard.commons.Match;
 import com.api.scoreboard.match.MatchListener;
@@ -239,8 +240,11 @@ public class TournamentServlet extends HttpServlet {
                 stmt = conn.prepareStatement("SELECT id FROM matches WHERE tournament_id = ?");
                 stmt.setString(1, tId);
                 rs = stmt.executeQuery();
+                String matchId;
                 while (rs.next()) {
-                    StatsListener.fireStatsRemove(rs.getString("id"));
+                    matchId = rs.getString("id");
+                    StatsListener.fireStatsRemove(matchId);
+                    EmbedListener.fireMatchRemove(matchId);
                 }
                 stmt = conn.prepareStatement("DELETE FROM matches WHERE tournament_id = ?");
                 stmt.setString(1, tId);
