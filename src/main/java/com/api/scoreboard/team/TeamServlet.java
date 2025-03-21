@@ -1,6 +1,6 @@
 package com.api.scoreboard.team;
 
-import com.api.scoreboard.embed.EmbedListener;
+import com.api.scoreboard.match.embed.EmbedListener;
 import com.api.scoreboard.stats.StatsListener;
 import com.api.scoreboard.match.MatchListener;
 import com.api.util.Database;
@@ -34,7 +34,6 @@ public class TeamServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        response.setContentType("application/json");
         Map<String, Object> jsonResponse = new HashMap<>();
 
         try {
@@ -94,7 +93,8 @@ public class TeamServlet extends HttpServlet {
                 }
 
                 List<Integer> playerIds = insertPlayers(conn, players, playerAvatarPaths);
-                int teamId = insertTeam(conn, teamName, teamLogoPath);
+                int userId = (int) request.getSession().getAttribute("uid");
+                int teamId = insertTeam(conn, teamName, teamLogoPath, userId);
                 linkPlayersToTeam(conn, teamId, playerIds);
 
                 jsonResponse.put("message", "Team created successfully");
@@ -185,11 +185,12 @@ public class TeamServlet extends HttpServlet {
         }
     }
 
-    private int insertTeam(Connection conn, String teamName, String logoPath) throws SQLException {
-        String insertTeamQuery = "INSERT INTO teams (name, logo) VALUES (?, ?)";
+    private int insertTeam(Connection conn, String teamName, String logoPath, int userId) throws SQLException {
+        String insertTeamQuery = "INSERT INTO teams (name, logo, user_id) VALUES (?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(insertTeamQuery, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, teamName);
             stmt.setString(2, logoPath);
+            stmt.setInt(3, userId);
             stmt.executeUpdate();
 
             ResultSet keys = stmt.getGeneratedKeys();
@@ -220,13 +221,15 @@ public class TeamServlet extends HttpServlet {
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
+        int userId = (int) request.getSession().getAttribute("uid");
 
         try {
             conn = new Database().getConnection();
 
             if (matchId == null) {
-                String query = "SELECT t.id, t.name, t.logo FROM teams t";
+                String query = "SELECT t.id, t.name, t.logo FROM teams t WHERE t.user_id = ?";
                 stmt = conn.prepareStatement(query);
+                stmt.setInt(1, userId);
                 rs = stmt.executeQuery();
 
                 List<Map<String, Object>> teams = new ArrayList<>();
@@ -251,9 +254,10 @@ public class TeamServlet extends HttpServlet {
                 }
                 response.getWriter().write(objectMapper.writeValueAsString(teams));
             } else {
-                String query = "SELECT t.id, t.name, t.logo FROM teams t WHERE t.id = ?";
+                String query = "SELECT t.id, t.name, t.logo FROM teams t WHERE t.id = ? AND t.user_id = ?";
                 stmt = conn.prepareStatement(query);
                 stmt.setInt(1, Integer.parseInt(matchId));
+                stmt.setInt(2, userId);
                 rs = stmt.executeQuery();
 
                 if (rs.next()) {
@@ -312,23 +316,33 @@ public class TeamServlet extends HttpServlet {
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
+        int userId = (int) request.getSession().getAttribute("uid");
 
         try {
             conn = new Database().getConnection();
+            String checkOwnershipQuery = "SELECT id FROM teams WHERE id = ? AND user_id = ?";
+            stmt = conn.prepareStatement(checkOwnershipQuery);
+            stmt.setInt(1, Integer.parseInt(id));
+            stmt.setInt(2, userId);
+            rs = stmt.executeQuery();
 
-            // Delete team_players associations
+            if (!rs.next()) {
+                jsonResponse.put("message", "Team not found");
+                response.setStatus(404);
+                response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+                return;
+            }
+
             String deleteTeamPlayersQuery = "DELETE FROM team_players WHERE team_id = ?";
             stmt = conn.prepareStatement(deleteTeamPlayersQuery);
             stmt.setInt(1, Integer.parseInt(id));
             stmt.executeUpdate();
 
-            // Delete the team
             String deleteTeamQuery = "DELETE FROM teams WHERE id = ?";
             stmt = conn.prepareStatement(deleteTeamQuery);
             stmt.setInt(1, Integer.parseInt(id));
             stmt.executeUpdate();
 
-            // Fetch and delete related matches
             List<Integer> matchIds = new ArrayList<>();
             String fetchMatchesQuery = "SELECT id FROM matches WHERE team1_id = ? OR team2_id = ?";
             stmt = conn.prepareStatement(fetchMatchesQuery);
@@ -346,7 +360,6 @@ public class TeamServlet extends HttpServlet {
             stmt.setInt(2, Integer.parseInt(id));
             stmt.executeUpdate();
 
-            // Delete player stats associated with the matches
             String deletePlayerStatsQuery = "DELETE FROM player_stats WHERE match_id = ?";
             for (int matchId : matchIds) {
                 stmt = conn.prepareStatement(deletePlayerStatsQuery);
@@ -354,7 +367,6 @@ public class TeamServlet extends HttpServlet {
                 stmt.executeUpdate();
             }
 
-            int userId = (int) request.getAttribute("uid");
             MatchListener.fireMatchesUpdate(userId);
             for (int matchId : matchIds) {
                 StatsListener.fireStatsRemove(String.valueOf(matchId));

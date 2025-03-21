@@ -43,7 +43,7 @@ public class StatsFilter implements Filter {
                 if (rs.next()) {
                     chain.doFilter(request, response);
                 } else {
-                    httpResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.getWriter().write("You are not authorized to view this match");
                 }
             } catch (Exception e) {

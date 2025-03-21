@@ -1,7 +1,6 @@
-package com.api.scoreboard.embed;
+package com.api.scoreboard.match.embed;
 
 import com.api.scoreboard.commons.Match;
-import com.api.scoreboard.stats.StatsListener;
 import com.api.util.Database;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.websocket.Session;
@@ -62,6 +61,9 @@ public class EmbedListener {
     public static void removeSession(String embedCode, Session session) {
         sessions.remove(session.getId());
         if (embedMatchSessions.containsKey(embedCode)) {
+            matchSessions.forEach((matchId, sessionIds) -> {
+                sessionIds.remove(session.getId());
+            });
             embedMatchSessions.get(embedCode).remove(session.getId());
         }
     }

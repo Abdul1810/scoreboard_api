@@ -52,7 +52,6 @@ public class RegisterServlet extends HttpServlet {
                     rs.next();
                     int userId = rs.getInt(1);
                     request.getSession(true);
-                    request.getSession().setAttribute("authenticated", true);
                     request.getSession().setAttribute("uid", userId);
                     request.getSession().setAttribute("username", username);
                     jsonResponse.put("message", "User registered successfully");

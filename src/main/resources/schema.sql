@@ -9,9 +9,11 @@ CREATE TABLE players
 CREATE TABLE teams
 (
     id         INT(11)      NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id    INT(11)      NOT NULL,
     name       VARCHAR(255) NOT NULL UNIQUE,
     logo       VARCHAR(255) NOT NULL DEFAULT 'placeholder.png',
-    created_at DATETIME     NOT NULL DEFAULT current_timestamp()
+    created_at DATETIME     NOT NULL DEFAULT current_timestamp(),
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
 CREATE TABLE team_players

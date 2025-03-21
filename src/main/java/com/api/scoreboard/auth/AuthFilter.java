@@ -11,7 +11,7 @@ import java.util.List;
 
 @WebFilter("/*")
 public class AuthFilter implements Filter {
-    private static final List<String> methodsNeedCSRF = List.of("POST", "PUT", "DELETE");
+//    private static final List<String> methodsNeedCSRF = List.of("POST", "PUT", "DELETE");
     private static final List<String> allowedPaths = List.of("/api/auth", "/ws/score");
 
     @Override
@@ -20,15 +20,15 @@ public class AuthFilter implements Filter {
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         String path = req.getRequestURI();
-        if (allowedPaths.stream().anyMatch(path::startsWith)) {
-            chain.doFilter(request, response);
-            return;
-        }
         httpResponse.setHeader("Access-Control-Allow-Origin", "http://localhost:4200");
         httpResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         httpResponse.setHeader("Access-Control-Allow-Headers", "Content-Type, JSESSIONID, X-CSRF-TOKEN");
         httpResponse.setHeader("Access-Control-Allow-Credentials", "true");
         httpResponse.setHeader("Content-Type", "application/json");
+        if (allowedPaths.stream().anyMatch(path::startsWith)) {
+            chain.doFilter(request, response);
+            return;
+        }
         if ("OPTIONS".equalsIgnoreCase(req.getMethod())) {
             httpResponse.setStatus(HttpServletResponse.SC_OK);
             return;
@@ -39,21 +39,21 @@ public class AuthFilter implements Filter {
                 System.out.println(name + " : " + session.getAttribute(name));
             });
         }
-        if (session != null && session.getAttribute("authenticated") != null && (boolean) session.getAttribute("authenticated")) {
+        if (session != null && session.getAttribute("uid") != null) {
             String agentFromSession = (String) session.getAttribute("agent");
             String agentFromHeader = req.getHeader("User-Agent");
 
             if (agentFromSession == null || !agentFromSession.equals(agentFromHeader)) {
                 session.invalidate();
-                httpResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.getWriter().write("CSRF token validation failed");
                 return;
-            } else if (methodsNeedCSRF.contains(req.getMethod())) {
+            } else if (!"GET".equalsIgnoreCase(req.getMethod())) {
                 String csrfTokenFromSession = (String) session.getAttribute("csrfToken");
                 String csrfTokenFromHeader = req.getHeader("X-CSRF-TOKEN");
                 System.out.println("CSRF token from session: " + csrfTokenFromHeader);
                 if (csrfTokenFromSession == null || !csrfTokenFromSession.equals(csrfTokenFromHeader)) {
-                    httpResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.getWriter().write("CSRF token validation failed");
                     return;
                 }

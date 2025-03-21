@@ -18,13 +18,12 @@ public class VerifyServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
         Map<String, String> jsonResponse = new HashMap<>();
-        System.out.println(request.getSession().getAttribute("authenticated"));
         HttpSession session = request.getSession(false);
         if (session != null) {
             System.out.println("Printing session attributes in VerifyServlet");
             session.getAttributeNames().asIterator().forEachRemaining(System.out::println);
         }
-        if (session != null && session.getAttribute("authenticated") != null && (boolean) session.getAttribute("authenticated")) {
+        if (session != null && session.getAttribute("uid") != null) {
             if (session.getAttribute("agent").equals(request.getHeader("User-Agent"))) {
                 jsonResponse.put("csrfToken", (String) session.getAttribute("csrfToken"));
                 jsonResponse.put("username", (String) session.getAttribute("username"));

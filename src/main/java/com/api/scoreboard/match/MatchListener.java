@@ -23,7 +23,6 @@ public class MatchListener {
     public static void addSession(String sessionId, Session session, int userId) {
         sessions.put(sessionId, session);
         List<Map<String, String>> matches = fetchMatchesFromDatabase(userId);
-        // userId: [session1, session2, ...]
         if (userSessions.containsKey(String.valueOf(userId))) {
             userSessions.get(String.valueOf(userId)).add(session);
         } else {
@@ -31,7 +30,6 @@ public class MatchListener {
             userSessionList.add(session);
             userSessions.put(String.valueOf(userId), userSessionList);
         }
-
         try {
             session.getBasicRemote().sendText(objectMapper.writeValueAsString(matches));
         } catch (IOException e) {
@@ -40,6 +38,7 @@ public class MatchListener {
     }
 
     public static void removeSession(String sessionId) {
+        userSessions.values().forEach(sessions -> sessions.removeIf(session -> session.getId().equals(sessionId)));
         sessions.remove(sessionId);
     }
 

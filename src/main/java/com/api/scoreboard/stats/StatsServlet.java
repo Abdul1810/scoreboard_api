@@ -1,7 +1,6 @@
 package com.api.scoreboard.stats;
 
 import com.api.scoreboard.commons.Match;
-import com.api.scoreboard.embed.EmbedListener;
 import com.api.scoreboard.match.MatchListener;
 import com.api.util.Database;
 import com.fasterxml.jackson.core.JsonProcessingException;

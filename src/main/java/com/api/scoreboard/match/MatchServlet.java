@@ -1,6 +1,6 @@
 package com.api.scoreboard.match;
 
-import com.api.scoreboard.embed.EmbedListener;
+import com.api.scoreboard.match.embed.EmbedListener;
 import com.api.scoreboard.stats.StatsListener;
 import com.api.scoreboard.commons.Match;
 import com.api.util.Database;
@@ -109,6 +109,19 @@ public class MatchServlet extends HttpServlet {
             }
 
             int userId = (int) request.getSession().getAttribute("uid");
+            String query = "SELECT * FROM teams WHERE user_id = ? AND id IN (?, ?)";
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setInt(1, userId);
+                stmt.setInt(2, Integer.parseInt(team1Id));
+                stmt.setInt(3, Integer.parseInt(team2Id));
+                rs = stmt.executeQuery();
+                if (!rs.next()) {
+                    jsonResponse.put("message", "Invalid team names");
+                    response.setStatus(400);
+                    response.getWriter().write(objectMapper.writeValueAsString(jsonResponse));
+                    return;
+                }
+            }
             int matchId = Match.create(conn, userId, Integer.parseInt(team1Id), Integer.parseInt(team2Id));
             MatchListener.fireMatchesUpdate(userId);
             jsonResponse.put("message", "success");

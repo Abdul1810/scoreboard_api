@@ -1,4 +1,4 @@
-package com.api.scoreboard.embed;
+package com.api.scoreboard.match.embed;
 
 import com.api.util.Database;
 import com.api.util.Validator;
@@ -145,7 +145,7 @@ public class EmbedServlet extends HttpServlet {
                 JOIN matches m ON e.match_id = m.id
                 JOIN teams t1 ON m.team1_id = t1.id
                 JOIN teams t2 ON m.team2_id = t2.id
-                WHERE e.user_id = ?
+                WHERE e.user_id = 6
                  */
                 String query = "SELECT e.match_id, e.embed_code, t1.name AS team1, t2.name AS team2" +
                         " FROM embeds e" +

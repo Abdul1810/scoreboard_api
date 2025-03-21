@@ -17,7 +17,6 @@ public class LogoutServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
         Map<String, String> jsonResponse = new HashMap<>();
-        String csrfToken = request.getHeader("X-CSRF-Token");
 
         HttpSession session = request.getSession(false);
         if (session == null) {
@@ -25,22 +24,16 @@ public class LogoutServlet extends HttpServlet {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response
-                .getWriter()
-                .write(objectMapper.writeValueAsString(jsonResponse));
+                    .getWriter()
+                    .write(objectMapper.writeValueAsString(jsonResponse));
             return;
         }
 
-        if (session.getAttribute("csrfToken").equals(csrfToken)) {
-            session.invalidate();
-            jsonResponse.put("message", "Logged out successfully");
-        } else {
-            jsonResponse.put("error", "Invalid CSRF token");
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        }
-
+        session.invalidate();
+        jsonResponse.put("message", "Logged out successfully");
         response.setContentType("application/json");
         response
-            .getWriter()
-            .write(objectMapper.writeValueAsString(jsonResponse));
+                .getWriter()
+                .write(objectMapper.writeValueAsString(jsonResponse));
     }
 }

@@ -1,4 +1,4 @@
-package com.api.scoreboard.embed;
+package com.api.scoreboard.match.embed;
 
 import com.api.util.Database;
 import jakarta.websocket.OnClose;

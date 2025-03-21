@@ -39,7 +39,6 @@ public class LoginServlet extends HttpServlet {
                 String hashedPassword = rs.getString("password");
                 if (PBKDF2Encryption.verifyPassword(password, salt, hashedPassword)) {
                     request.getSession(true);
-                    request.getSession().setAttribute("authenticated", true);
                     request.getSession().setAttribute("uid", rs.getInt("id"));
                     request.getSession().setAttribute("username", rs.getString("username"));
                     String csrfToken = UUID.randomUUID().toString();
@@ -49,11 +48,11 @@ public class LoginServlet extends HttpServlet {
                     jsonResponse.put("username", rs.getString("username"));
                 } else {
                     jsonResponse.put("error", "Invalid username or password");
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 }
             } else {
                 jsonResponse.put("error", "user not found");
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | SQLException e) {
             jsonResponse.put("error", "Internal server error");

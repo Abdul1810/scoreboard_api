@@ -1,16 +1,11 @@
 package com.api.scoreboard.stats;
 
 import com.api.scoreboard.commons.Match;
-import com.api.scoreboard.embed.EmbedListener;
-import com.api.util.Database;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.api.scoreboard.match.embed.EmbedListener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.websocket.Session;
 
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
