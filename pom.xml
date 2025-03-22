@@ -2,7 +2,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.demo</groupId>
-    <artifactId>zoho_training</artifactId>
+    <artifactId>java_training</artifactId>
     <packaging>war</packaging>
     <version>1.0.0</version>
     <name>scoreboard_api</name>
@@ -49,7 +49,7 @@
         </dependency>
     </dependencies>
     <build>
-        <finalName>zoho_training</finalName>
+        <finalName>java_training</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

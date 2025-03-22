@@ -20,7 +20,7 @@ public class HighlightStreamer extends HttpServlet {
             return;
         }
 
-        File videoFile = new File("F:\\Code\\JAVA\\zoho_training\\uploads\\highlights\\" + videoName);
+        File videoFile = new File("\\uploads\\highlights\\" + videoName);
         if (!videoFile.exists()) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;

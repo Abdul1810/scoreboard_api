@@ -46,7 +46,7 @@ public class BannerServlet extends HttpServlet {
                 }
 
                 response.setContentType("image/jpeg");
-                String path = "F:\\Code\\JAVA\\zoho_training\\uploads\\banners\\" + bannerPath;
+                String path = "\\uploads\\banners\\" + bannerPath;
                 File imageFile = new File(path);
                 if (!imageFile.exists()) {
                     response.setStatus(HttpServletResponse.SC_NOT_FOUND);

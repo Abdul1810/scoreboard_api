@@ -113,7 +113,7 @@ public class TeamServlet extends HttpServlet {
             return "placeholder.png";
         }
 
-        String uploadDir = "F:\\Code\\JAVA\\zoho_training\\uploads\\" + type + "\\";
+        String uploadDir = "\\uploads\\" + type + "\\";
         File dir = new File(uploadDir);
         if (!dir.exists()) {
             dir.mkdirs();

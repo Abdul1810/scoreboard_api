@@ -25,9 +25,9 @@ public class StatsServlet extends HttpServlet {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, String> jsonResponse = new HashMap<>();
 
-    private final static String BANNER_PATH = "F:\\Code\\JAVA\\zoho_training\\uploads\\banners\\";
-    private final static String TEAM_LOGO_PATH = "F:\\Code\\JAVA\\zoho_training\\uploads\\teams\\";
-    private final static String PLAYER_IMAGE_PATH = "F:\\Code\\JAVA\\zoho_training\\uploads\\players\\";
+    private final static String BANNER_PATH = "\\uploads\\banners\\";
+    private final static String TEAM_LOGO_PATH = "\\uploads\\teams\\";
+    private final static String PLAYER_IMAGE_PATH = "\\uploads\\players\\";
 
     @Override
     protected void doPut(HttpServletRequest request, HttpServletResponse response) throws IOException {

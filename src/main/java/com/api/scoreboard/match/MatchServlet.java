@@ -213,14 +213,14 @@ public class MatchServlet extends HttpServlet {
             }
 
             if (highlightsPath != null) {
-                String highlightsFilePath = "F:\\Code\\JAVA\\zoho_training\\uploads\\highlights\\" + highlightsPath;
+                String highlightsFilePath = "\\uploads\\highlights\\" + highlightsPath;
                 if (!new File(highlightsFilePath).delete()) {
                     System.err.println("Error deleting highlights file");
                 }
             }
 
             if (bannerPath != null) {
-                String bannerFilePath = "F:\\Code\\JAVA\\zoho_training\\uploads\\banners\\" + bannerPath;
+                String bannerFilePath = "\\uploads\\banners\\" + bannerPath;
                 if (!new File(bannerFilePath).delete()) {
                     System.err.println("Error deleting banner file");
                 }

@@ -6,7 +6,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Zoho Training</title>
+    <title>Java Training</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <script>
@@ -61,7 +61,7 @@
     </script>
 </head>
 <body style="display: grid; place-items: center;">
-<h1>Hello, ZOHO!</h1>
+<h1>Hello, Java!</h1>
 <p>Java, Servlet, Websocket, JSP</p>
 <%--<input type="text" id="result" readonly style="margin-right: 10px;" value="<%= result %>"/>--%>
 <p id="result" style="margin-right: 10px;">Enter a expression</p>

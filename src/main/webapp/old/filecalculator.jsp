@@ -1,7 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <html>
 <head>
-    <title>Zoho Training - Day 6</title>
+    <title>Java Training</title>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <script>
@@ -89,7 +89,7 @@
     </script>
 </head>
 <body style="text-align: center; font-family: Arial, sans-serif;">
-<h1>Hello, ZOHO!</h1>
+<h1>Hello, JAVA!</h1>
 <p>Java, Servlet, WebSocket, JSP</p>
 <input type="file" accept="text/plain" onchange="listContentFile(this.files[0])"/>
 <div id="progress" style="position: fixed; bottom: 0; left: 80%; transform: translateX(-50%); background-color: white; padding: 5px;">

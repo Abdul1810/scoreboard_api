@@ -33,7 +33,7 @@ public class ImageStreamer extends HttpServlet {
             return;
         }
 
-        String imagePath = "F:\\Code\\JAVA\\zoho_training\\uploads\\" + type + "\\" + imageName;
+        String imagePath = "\\uploads\\" + type + "\\" + imageName;
         File imageFile = new File(imagePath);
         if (!imageFile.exists()) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
